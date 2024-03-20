@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -56,15 +55,9 @@ func readConnection(conn net.Conn) {
 			ok := scanner.Scan()
 			text := scanner.Text()
 
-			command := handleCommands(text)
-			if !command {
-				fmt.Printf("\b\b** %s\n> ", text)
-				if strings.Contains(text, "Cannot join!") {
-					ok = false
-				}
-			}
+			fmt.Printf("\b\b** %s\n> ", text)
 
-			if !ok {
+			if !ok || hasExitCommand(text) {
 				fmt.Println("Disconnected! Exiting...")
 				os.Exit(0)
 				break
@@ -73,20 +66,13 @@ func readConnection(conn net.Conn) {
 	}
 }
 
-func handleCommands(text string) bool {
-	r, err := regexp.Compile("^%.*%$")
-	if err == nil {
-		if r.MatchString(text) {
-
-			switch {
-			case text == "%quit%":
-				fmt.Println("\b\bServer is leaving. Hanging up.")
-				os.Exit(0)
-			}
-
-			return true
-		}
+func hasExitCommand(text string) bool {
+	if strings.Contains(text, "Cannot join!") {
+		return true
 	}
-
 	return false
+}
+
+func playGame() {
+
 }

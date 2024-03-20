@@ -58,6 +58,8 @@ func handleConnection(conn net.Conn) {
 	}
 
 	fmt.Println("Client \"" + clientsSettings[remoteAddr].name + "\" at " + remoteAddr + " disconnected.")
+	colorOptions = append(colorOptions, clientsSettings[remoteAddr].color)
+	delete(clientsSettings, clientsSettings[remoteAddr].name)
 }
 
 func handleMessage(message string, conn net.Conn) {
