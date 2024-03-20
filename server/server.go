@@ -11,7 +11,9 @@ import (
 
 var addr = flag.String("addr", "", "The address to listen to; default is \"\" (all interfaces).")
 var port = flag.Int("port", 8000, "The port to listen on; default is 8000.")
-var clientSettings = make(map[string]Pair)
+var clientsSettings = make(map[string]Pair)
+var colorOptions = []string{"red", "green", "blue"}
+var maxPlayers = len(colorOptions)
 
 type Pair struct {
 	name  string
@@ -55,22 +57,44 @@ func handleConnection(conn net.Conn) {
 		handleMessage(scanner.Text(), conn)
 	}
 
-	fmt.Println("Client \"" + clientSettings[remoteAddr].name + "\" at " + remoteAddr + " disconnected.")
+	fmt.Println("Client \"" + clientsSettings[remoteAddr].name + "\" at " + remoteAddr + " disconnected.")
 }
 
 func handleMessage(message string, conn net.Conn) {
 	fmt.Println("> " + message)
 	split := strings.SplitN(message, " ", 2)
+	currentClient := conn.RemoteAddr().String()
 	if len(split) > 1 {
 		command := strings.ToLower(split[0])
 		switch {
 		case command == "join":
-			name := split[1]
-			resp := "Joined as \"" + name + "\"\n"
-			fmt.Print("< " + resp)
-			conn.Write([]byte(resp))
-			clientSettings[conn.RemoteAddr().String()] = Pair{name, "green"}
-			return
+			if len(colorOptions) == 0 {
+				resp := "Cannot join! Max player count of " + strconv.Itoa(maxPlayers) + " reached!\n"
+				fmt.Print("< " + resp)
+				conn.Write([]byte(resp))
+				return
+			}
+			clientSetting, hasClient := clientsSettings[currentClient]
+			if hasClient {
+				name := split[1]
+				colorOptions = append(colorOptions, clientSetting.color)
+				color := colorOptions[0]
+				colorOptions = colorOptions[1:]
+				clientsSettings[currentClient] = Pair{name, color}
+				resp := "Renamed to \"" + name + "\" with " + color + "\n"
+				fmt.Print("< " + resp)
+				conn.Write([]byte(resp))
+				return
+			} else {
+				name := split[1]
+				color := colorOptions[0]
+				colorOptions = colorOptions[1:]
+				clientsSettings[currentClient] = Pair{name, color}
+				resp := "Joined as \"" + name + "\" with " + color + "\n"
+				fmt.Print("< " + resp)
+				conn.Write([]byte(resp))
+				return
+			}
 		}
 	}
 	conn.Write([]byte("Unrecognized command.\n"))

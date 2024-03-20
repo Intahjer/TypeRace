@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -28,7 +29,7 @@ func main() {
 		} else {
 			fmt.Println("Unknown error: " + err.Error())
 		}
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	go readConnection(conn)
@@ -58,6 +59,9 @@ func readConnection(conn net.Conn) {
 			command := handleCommands(text)
 			if !command {
 				fmt.Printf("\b\b** %s\n> ", text)
+				if strings.Contains(text, "Cannot join!") {
+					ok = false
+				}
 			}
 
 			if !ok {
