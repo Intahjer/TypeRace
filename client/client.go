@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/term"
 )
 
 var host = flag.String("host", "localhost", "The hostname or IP to connect to; defaults to \"localhost\".")
@@ -57,7 +59,7 @@ func readConnection(conn net.Conn) {
 
 			fmt.Printf("\b\b** %s\n> ", text)
 
-			if !ok || hasExitCommand(text) {
+			if !ok || strings.Contains(text, "Cannot join!") {
 				fmt.Println("Disconnected! Exiting...")
 				os.Exit(0)
 				break
@@ -66,13 +68,19 @@ func readConnection(conn net.Conn) {
 	}
 }
 
-func hasExitCommand(text string) bool {
-	if strings.Contains(text, "Cannot join!") {
-		return true
-	}
-	return false
-}
-
 func playGame() {
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer term.Restore(int(os.Stdin.Fd()), oldState)
 
+	b := make([]byte, 1)
+	_, err = os.Stdin.Read(b)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Printf("the char %q was hit", string(b[0]))
 }
