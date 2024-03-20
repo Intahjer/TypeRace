@@ -1,12 +1,3 @@
-/*
-A very simple TCP client written in Go.
-
-This is a toy project that I used to learn the fundamentals of writing
-Go code and doing some really basic network stuff.
-
-Maybe it will be fun for you to read. It's not meant to be
-particularly idiomatic, or well-written for that matter.
-*/
 package main
 
 import (
@@ -70,7 +61,8 @@ func readConnection(conn net.Conn) {
 			}
 
 			if !ok {
-				fmt.Println("Reached EOF on server connection.")
+				fmt.Println("Disconnected! Exiting...")
+				os.Exit(0)
 				break
 			}
 		}

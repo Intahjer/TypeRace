@@ -1,12 +1,3 @@
-/*
-A very simple TCP server written in Go.
-
-This is a toy project that I used to learn the fundamentals of writing
-Go code and doing some really basic network stuff.
-
-Maybe it will be fun for you to read. It's not meant to be
-particularly idiomatic, or well-written for that matter.
-*/
 package main
 
 import (
@@ -14,13 +5,18 @@ import (
 	"flag"
 	"fmt"
 	"net"
-	"os"
 	"strconv"
-	"time"
+	"strings"
 )
 
 var addr = flag.String("addr", "", "The address to listen to; default is \"\" (all interfaces).")
 var port = flag.Int("port", 8000, "The port to listen on; default is 8000.")
+var clientSettings = make(map[string]Pair)
+
+type Pair struct {
+	name  string
+	color string
+}
 
 func main() {
 	flag.Parse()
@@ -59,28 +55,23 @@ func handleConnection(conn net.Conn) {
 		handleMessage(scanner.Text(), conn)
 	}
 
-	fmt.Println("Client at " + remoteAddr + " disconnected.")
+	fmt.Println("Client \"" + clientSettings[remoteAddr].name + "\" at " + remoteAddr + " disconnected.")
 }
 
 func handleMessage(message string, conn net.Conn) {
 	fmt.Println("> " + message)
-
-	if len(message) > 0 && message[0] == '/' {
+	split := strings.SplitN(message, " ", 2)
+	if len(split) > 1 {
+		command := strings.ToLower(split[0])
 		switch {
-		case message == "/time":
-			resp := "It is " + time.Now().String() + "\n"
+		case command == "join":
+			name := split[1]
+			resp := "Joined as \"" + name + "\"\n"
 			fmt.Print("< " + resp)
 			conn.Write([]byte(resp))
-
-		case message == "/quit":
-			fmt.Println("Quitting.")
-			conn.Write([]byte("I'm shutting down now.\n"))
-			fmt.Println("< " + "%quit%")
-			conn.Write([]byte("%quit%\n"))
-			os.Exit(0)
-
-		default:
-			conn.Write([]byte("Unrecognized command.\n"))
+			clientSettings[conn.RemoteAddr().String()] = Pair{name, "green"}
+			return
 		}
 	}
+	conn.Write([]byte("Unrecognized command.\n"))
 }
