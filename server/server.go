@@ -25,9 +25,10 @@ var characterIndex = 0
 var keysPressed = 0
 var keysCorrect = 0
 var wpm = 0
-var test = "ASDASDASDASDASDASDASDASDASDASDASDASDADS"
+var test = "Jerin is a guy that made this. This string is to test the wpm accurancy which as of now should be sixty or so since these are easy words."
 var timerDone = true
 var hasSet = false
+var countDown = time.Now()
 
 func main() {
 	c.WINDOW.Run(loop)
@@ -106,6 +107,14 @@ func loop() {
 			}))
 	} else if timerDone {
 		c.GUI.Layout(giu.Style().SetFontSize(30).To(giu.Button("Play game").Size(float32(400), float32(50)).OnClick(func() { play() })))
+	} else if time.Now().Before(countDown) {
+		var label giu.Widget
+		if time.Now().Before(countDown.Add(-1 * time.Second)) {
+			label = giu.Label("\n\n\n\n\n\n\n" + strconv.Itoa(countDown.Second()-time.Now().Second()))
+		} else {
+			label = giu.Label("\n\n\n\n\n\n\n" + "GO")
+		}
+		c.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(label)))
 	} else {
 		c.GUI.RegisterKeyboardShortcuts(getRKS()...).Layout(getKeyWidget(keyWidgetStr)...)
 	}
@@ -113,7 +122,8 @@ func loop() {
 }
 
 func play() {
-	timer = time.Now().Add(30 * time.Second)
+	timer = time.Now().Add(time.Duration(c.TIMER+c.COUNTDOWN) * time.Second)
+	countDown = time.Now().Add(time.Duration(c.COUNTDOWN) * time.Second)
 	timerDone = false
 	keyWidgetStr = createKeyWidget(test)
 }
@@ -163,7 +173,7 @@ func getKeyWidget(w []KeyWidget) []giu.Widget {
 		}
 		tick := int(time.Until(timer).Seconds())
 		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{tick, c.WIDTH - 40, c.HEIGHT - 40}))
-		wpm = getWPM(30 - tick)
+		wpm = getWPM(c.TIMER - tick)
 		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{wpm, 8, c.HEIGHT - 40}))
 		layouts = append(layouts, getSprites(players)...)
 	} else {
