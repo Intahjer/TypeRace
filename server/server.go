@@ -10,44 +10,32 @@ import (
 	"strings"
 	"time"
 
+	c "TypeRace/constants"
+
 	"github.com/AllenDang/giu"
 )
 
-var clientsSettings = make(map[string]Pair)
-var colorOptions = []string{"red", "green", "blue"}
-var maxPlayers = len(colorOptions)
-var wnd = giu.NewMasterWindow("Typing Game", width, height, 0)
 var keyWidgetStr []KeyWidget
 var timer time.Time
-var colorRed = color.RGBA{150, 25, 25, 225}
-var colorWhite = color.RGBA{225, 225, 225, 225}
-var colorGray = color.RGBA{110, 110, 110, 225}
-var colorDarkGray = color.RGBA{60, 60, 60, 225}
-var width = 1280
-var height = 640
-var strInd = 0
+var listener net.Listener
+var players = make(map[string]PlayerInfo)
+var keys = make(map[rune]Key)
+var playerSpace = 5
+var characterIndex = 0
 var keysPressed = 0
 var keysCorrect = 0
 var wpm = 0
-var colorPlayer = "red"
 var test = "ASDASDASDASDASDASDASDASDASDASDASDASDADS"
-var singwnd = giu.SingleWindow()
 var timerDone = true
-var listener net.Listener
-var src = ""
 var hasSet = false
 
-type Pair struct {
-	name  string
-	color string
-}
-
 func main() {
-	wnd.Run(loop)
+	c.WINDOW.Run(loop)
 }
 
 func handleConnection() {
 	defer listener.Close()
+	playerSpace--
 	for {
 		conn, _ := listener.Accept()
 		remoteAddr := conn.RemoteAddr().String()
@@ -59,48 +47,30 @@ func handleConnection() {
 			}
 			handleMessage(scanner.Text(), conn)
 		}
-		colorOptions = append(colorOptions, clientsSettings[remoteAddr].color)
-		delete(clientsSettings, clientsSettings[remoteAddr].name)
+		delete(players, remoteAddr)
+		playerSpace++
 	}
 }
 
 func handleMessage(message string, conn net.Conn) {
-	split := strings.SplitN(message, " ", 2)
 	currentClient := conn.RemoteAddr().String()
-	if len(split) > 1 {
-		command := strings.ToLower(split[0])
-		switch {
-		case command == "join":
-			if len(colorOptions) == 0 {
-				resp := "Cannot join! Max player count of " + strconv.Itoa(maxPlayers) + " reached!\n"
-				conn.Write([]byte(resp))
-				return
-			}
-			clientSetting, hasClient := clientsSettings[currentClient]
-			if hasClient {
-				name := split[1]
-				colorOptions = append(colorOptions, clientSetting.color)
-				color := colorOptions[0]
-				colorOptions = colorOptions[1:]
-				clientsSettings[currentClient] = Pair{name, color}
-				resp := "Renamed to \"" + name + "\" with " + color + "\n"
-				conn.Write([]byte(resp))
-				return
-			} else {
-				name := split[1]
-				color := colorOptions[0]
-				colorOptions = colorOptions[1:]
-				clientsSettings[currentClient] = Pair{name, color}
-				resp := "Joined as \"" + name + "\" with " + color + "\n"
-				conn.Write([]byte(resp))
-				return
-			}
+	command := strings.Split(message, c.SPLIT)
+	switch {
+	case command[0] == c.CC_JOIN:
+		if playerSpace <= 0 {
+			conn.Write([]byte(c.SC_DISCONNECT))
+			return
 		}
+		players[currentClient] = PlayerInfo{command[1], 0, 0.0}
+		return
 	}
-	conn.Write([]byte("Unrecognized command.\n"))
 }
 
-var keys = make(map[rune]Key)
+type PlayerInfo struct {
+	name        string
+	keysCorrect int
+	keysPressed int
+}
 
 type Key struct {
 	key     giu.Key
@@ -109,36 +79,35 @@ type Key struct {
 }
 
 type WpmWidget struct {
-	Int  int
-	locX int
-	locY int
+	wpm int
+	x   int
+	y   int
 }
 
 type KeyWidget struct {
-	locx  int
-	locy  int
+	x     int
+	y     int
 	text  rune
 	color color.RGBA
 }
 
-type StrWidget struct {
-	text string
-}
-
 func loop() {
-	giu.PushColorWindowBg(colorDarkGray)
+	giu.PushColorWindowBg(c.DGRAY)
 	giu.PopStyleColor()
 	if !hasSet {
-		singwnd.Layout(giu.InputText(&src), giu.Button("Set Address").OnClick(func() {
-			hasSet = true
-			listener, _ = net.Listen("tcp", src)
-			fmt.Println(src)
-			go handleConnection()
-		}))
+		c.GUI.Layout(giu.Row(giu.Label("Address : "), giu.InputText(&c.ADDR)),
+			giu.Row(giu.Label("Name : "), giu.InputText(&c.NAME)),
+			giu.Button("Ok").Size(200, 50).OnClick(func() {
+				hasSet = true
+				listener, _ = net.Listen("tcp", c.ADDR)
+				go handleConnection()
+				players[c.ADDR] = PlayerInfo{c.NAME, 0, 0}
+				playerSpace--
+			}))
 	} else if timerDone {
-		singwnd.Layout(giu.Style().SetFontSize(30).To(giu.Button("Play game").Size(float32(400), float32(50)).OnClick(func() { play() })))
+		c.GUI.Layout(giu.Style().SetFontSize(30).To(giu.Button("Play game").Size(float32(400), float32(50)).OnClick(func() { play() })))
 	} else {
-		singwnd.RegisterKeyboardShortcuts(getRKS()...).Layout(giu.Style().SetFontSize(30).To(getKeyWidget(keyWidgetStr)...))
+		c.GUI.RegisterKeyboardShortcuts(getRKS()...).Layout(getKeyWidget(keyWidgetStr)...)
 	}
 	giu.Update()
 }
@@ -152,26 +121,27 @@ func play() {
 func keyPress(char rune) {
 	newKeyWidgetStr := []KeyWidget{}
 	keysPressed++
-	for ind, e := range keyWidgetStr {
-		if ind == strInd {
-			if e.text == char {
-				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{e.locx, e.locy, char, colorWhite})
+	for currentIndex, currentChar := range keyWidgetStr {
+		if currentIndex == characterIndex {
+			if currentChar.text == char {
+				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, c.WHITE})
 				keysCorrect++
 			} else {
-				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{e.locx, e.locy, char, colorRed})
+				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, c.RED})
 			}
 		} else {
-			newKeyWidgetStr = append(newKeyWidgetStr, e)
+			newKeyWidgetStr = append(newKeyWidgetStr, currentChar)
 		}
 	}
 	keyWidgetStr = newKeyWidgetStr
-	strInd++
+	characterIndex++
+	players[c.ADDR] = PlayerInfo{c.NAME, keysCorrect, keysPressed}
 }
 
 func createKeyWidget(in string) []KeyWidget {
 	layouts := []KeyWidget{}
 	for _, key := range in {
-		keyWidget := KeyWidget{0, 0, key, colorGray}
+		keyWidget := KeyWidget{0, 0, key, c.GRAY}
 		layouts = append(layouts, keyWidget)
 	}
 	return layouts
@@ -183,18 +153,19 @@ func getKeyWidget(w []KeyWidget) []giu.Widget {
 		widgetLocX := 0
 		widgetLocY := 0
 		for _, key := range w {
-			if widgetLocX/(width-40) != 0 {
+			if widgetLocX/(c.WIDTH-40) != 0 {
 				widgetLocY++
 				widgetLocX = 0
 			}
 			keyWidget := KeyWidget{widgetLocX, widgetLocY, key.text, key.color}
-			layouts = append(layouts, &keyWidget)
+			layouts = append(layouts, giu.Style().SetFontSize(30).To(&keyWidget))
 			widgetLocX += keys[key.text].size
 		}
 		tick := int(time.Until(timer).Seconds())
-		layouts = append(layouts, &WpmWidget{tick, width - 40, height - 40})
+		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{tick, c.WIDTH - 40, c.HEIGHT - 40}))
 		wpm = getWPM(30 - tick)
-		layouts = append(layouts, getSprites()...)
+		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{wpm, 8, c.HEIGHT - 40}))
+		layouts = append(layouts, getSprites(players)...)
 	} else {
 		timerDone = true
 	}
@@ -202,19 +173,20 @@ func getKeyWidget(w []KeyWidget) []giu.Widget {
 	return layouts
 }
 
-func getSprites() []giu.Widget {
+func getSprites(playerStats map[string]PlayerInfo) []giu.Widget {
 	layouts := []giu.Widget{}
-	space := " "
-	for u := 0; u < keysCorrect/2; u++ {
-		space += " "
+	for _, info := range playerStats {
+		space := " "
+		for u := 0; u < info.keysCorrect/2; u++ {
+			space += " "
+		}
+		jet := ((100 * (info.keysCorrect + 1)) / (info.keysPressed + 1)) / 10
+		if jet < 6 {
+			jet = 6
+		}
+		jet -= 5
+		layouts = append(layouts, giu.Style().SetFontSize(20).To(giu.Row(giu.Label(space), giu.Label("\n"+info.name), giu.ImageWithFile("sprites\\Jet"+fmt.Sprint(jet)+".png"))))
 	}
-	jet := ((100 * (keysCorrect + 1)) / (keysPressed + 1)) / 10
-	if jet < 6 {
-		jet = 6
-	}
-	jet -= 5
-	layouts = append(layouts, giu.Style().SetFontSize(20).To(giu.Row(giu.Label(space), giu.Label("\nJerin"), giu.ImageWithFile("sprites\\Jet"+fmt.Sprint(jet)+".png"))))
-	layouts = append(layouts, &WpmWidget{wpm, 8, height - 40})
 	return layouts
 }
 
@@ -330,28 +302,22 @@ func getRKS() []giu.WindowShortcut {
 	return rks
 }
 
-func (c *KeyWidget) Build() {
-	pos := image.Pt(8, 8+(height/2)).Add(image.Pt(c.locx, (c.locy * 32)))
+func (w *KeyWidget) Build() {
+	pos := image.Pt(8, 8+(c.HEIGHT/2)).Add(image.Pt(w.x, (w.y * 32)))
 	canvas := giu.GetCanvas()
-	buildStr := string(c.text)
-	if c.text == ' ' {
+	buildStr := string(w.text)
+	if w.text == ' ' {
 		buildStr = "."
 		pos = pos.Add(image.Pt(0, -6))
 	}
-	canvas.AddText(pos, c.color, buildStr)
+	canvas.AddText(pos, w.color, buildStr)
 }
 
-// func (c *StrWidget) Build() {
-// 	pos := image.Pt(8, 8+(height/2)).Add(image.Pt(c.locx, (c.locY)))
-// 	canvas := giu.GetCanvas()
-// 	canvas.AddText(pos, colorWhite, c.text)
-// }
-
-func (c *WpmWidget) Build() {
-	pos := image.Pt(c.locX, c.locY)
+func (w *WpmWidget) Build() {
+	pos := image.Pt(w.x, w.y)
 	canvas := giu.GetCanvas()
-	buildStr := strconv.Itoa(c.Int)
-	canvas.AddText(pos, colorWhite, buildStr)
+	buildStr := strconv.Itoa(w.wpm)
+	canvas.AddText(pos, c.WHITE, buildStr)
 }
 
 func getWPM(timeElapsed int) int {
