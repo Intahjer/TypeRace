@@ -13,10 +13,9 @@ import (
 
 var host = flag.String("host", "localhost", "The hostname or IP to connect to; defaults to \"localhost\".")
 var port = flag.Int("port", 8000, "The port to connect to; defaults to 8000.")
-var name = "Guest"
-var color = "null"
 
 func main() {
+
 	flag.Parse()
 
 	dest := *host + ":" + strconv.Itoa(*port)
@@ -34,7 +33,9 @@ func main() {
 	}
 
 	go readConnection(conn)
+}
 
+func writeConnection(conn net.Conn) {
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("> ")
@@ -63,10 +64,6 @@ func readConnection(conn net.Conn) {
 				fmt.Println("Disconnected! Exiting...")
 				os.Exit(0)
 				break
-			} else if strings.Contains(text, "with") {
-				textSplit := strings.Split(text, "\"")
-				name = textSplit[1]
-				color = string([]rune(textSplit[2])[5:])
 			}
 		}
 	}
