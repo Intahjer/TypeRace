@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"strings"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/AllenDang/giu"
 )
 
-var listener net.Listener
 var playerSpace = 5
 var addrSet = false
 var LOCAL_MODE = ""
@@ -20,26 +20,32 @@ func main() {
 	game.WINDOW.Run(loop)
 }
 
-func handleConnection() {
+func connectionLoop(listener net.Listener) {
 	defer listener.Close()
-	// playerSpace--
 	for {
 		conn, _ := listener.Accept()
-		// remoteAddr := conn.RemoteAddr().String()
-		scanner := bufio.NewScanner(conn)
-		for {
-			ok := scanner.Scan()
-			if !ok {
-				break
-			}
-			handleMessage(scanner.Text(), conn)
+		go handleConnection(conn)
+	}
+}
+
+func handleConnection(conn net.Conn) {
+	remoteAddr := conn.RemoteAddr().String()
+	fmt.Println("Client connected from " + remoteAddr)
+	scanner := bufio.NewScanner(conn)
+	for {
+		ok := scanner.Scan()
+		fmt.Println("A")
+		if !ok {
+			fmt.Println("B")
+			break
 		}
-		// playerSpace++
-		// delete(game.Players, remoteAddr)
+		fmt.Println("C")
+		handleMessage(scanner.Text(), conn)
 	}
 }
 
 func handleMessage(message string, conn net.Conn) {
+	fmt.Println(message)
 	currentClient := conn.RemoteAddr().String()
 	command := strings.Split(message, game.SPLIT)
 	switch {
@@ -63,8 +69,8 @@ func loop() {
 			Callback: func() {
 				addrSet = true
 				if game.ADDR != LOCAL_MODE {
-					listener, _ = net.Listen("tcp", game.ADDR)
-					go handleConnection()
+					listener, _ := net.Listen("tcp", game.ADDR)
+					go connectionLoop(listener)
 				}
 				game.Players[game.ADDR] = game.MakePlayer(game.NAME, 0, 0)
 				playerSpace--

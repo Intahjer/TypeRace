@@ -18,6 +18,7 @@ var SPLIT = ":"
 var WNAME = "Typing Game"
 var ADDR = ":8000"
 var NAME = "Guest"
+var EOF = "\n"
 var CENTER_X = "\n\n\n\n\n\n\n"
 var TIMER = 30
 var COUNTDOWN = 4
@@ -42,7 +43,7 @@ var RunGame = false
 var countDown = time.Now()
 
 func MakePlayer(name string, keysCorrect int, keysPressed int) PlayerInfo {
-	return PlayerInfo{name, keysCorrect, keysPressed}
+	return PlayerInfo{SimpleName(name), keysCorrect, keysPressed}
 }
 
 type PlayerInfo struct {
@@ -331,4 +332,8 @@ func ReadPlayer(str string) PlayerInfo {
 	arg2, _ := strconv.Atoi(playerData[1])
 	arg3, _ := strconv.Atoi(playerData[2])
 	return PlayerInfo{playerData[0], arg2, arg3}
+}
+
+func ThisPlayer() PlayerInfo {
+	return MakePlayer(NAME, keysCorrect, keysPressed)
 }

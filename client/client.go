@@ -3,10 +3,10 @@ package main
 import (
 	"TypeRace/game"
 	"bufio"
-	"fmt"
 	"net"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/AllenDang/giu"
 )
@@ -14,7 +14,6 @@ import (
 var addrSet = false
 var disconnect = false
 var strToType string
-var conn net.Conn
 
 func main() {
 	game.WINDOW.Run(loop)
@@ -39,6 +38,16 @@ func readConnection(conn net.Conn) {
 	}
 }
 
+func sendStatus(conn net.Conn) {
+	for {
+		time.Sleep(1 * time.Second)
+		thisPlayer := game.ThisPlayer()
+		conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
+		conn.Write([]byte(game.CC_JOIN + game.SPLIT + thisPlayer.Write() + game.EOF))
+	}
+
+}
+
 func loop() {
 	giu.PushColorWindowBg(game.DGRAY)
 	if !addrSet {
@@ -48,11 +57,9 @@ func loop() {
 			Key: giu.KeyEnter,
 			Callback: func() {
 				addrSet = true
-				conn, _ = net.Dial("tcp", game.ADDR)
+				conn, _ := net.Dial("tcp", game.ADDR)
 				go readConnection(conn)
-				thisPlayer := game.MakePlayer(game.SimpleName(game.NAME), 0, 0)
-				fmt.Println(game.CC_JOIN + game.SPLIT + thisPlayer.Write())
-				conn.Write([]byte(game.CC_JOIN + game.SPLIT + thisPlayer.Write()))
+				go sendStatus(conn)
 			}})
 	} else if disconnect {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(game.CENTER_X + "Disconnected!")))
