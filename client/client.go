@@ -1,70 +1,70 @@
 package main
 
 import (
+	"TypeRace/game"
 	"bufio"
-	"flag"
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 	"strings"
-	"time"
+
+	"github.com/AllenDang/giu"
 )
 
-var host = flag.String("host", "localhost", "The hostname or IP to connect to; defaults to \"localhost\".")
-var port = flag.Int("port", 8000, "The port to connect to; defaults to 8000.")
+var addrSet = false
+var disconnect = false
+var strToType string
+var conn net.Conn
 
 func main() {
-
-	flag.Parse()
-
-	dest := *host + ":" + strconv.Itoa(*port)
-	fmt.Printf("Connecting to %s...\n", dest)
-
-	conn, err := net.Dial("tcp", dest)
-
-	if err != nil {
-		if _, t := err.(*net.OpError); t {
-			fmt.Println("Some problem connecting.")
-		} else {
-			fmt.Println("Unknown error: " + err.Error())
-		}
-		os.Exit(0)
-	}
-
-	go readConnection(conn)
-}
-
-func writeConnection(conn net.Conn) {
-	for {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("> ")
-		text, _ := reader.ReadString('\n')
-
-		conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
-		_, err := conn.Write([]byte(text))
-		if err != nil {
-			fmt.Println("Error writing to stream.")
-			break
-		}
-	}
+	game.WINDOW.Run(loop)
 }
 
 func readConnection(conn net.Conn) {
 	for {
 		scanner := bufio.NewScanner(conn)
-
 		for {
 			ok := scanner.Scan()
 			text := scanner.Text()
-
-			fmt.Printf("\b\b** %s\n> ", text)
-
-			if !ok || strings.Contains(text, "Cannot join!") {
-				fmt.Println("Disconnected! Exiting...")
-				os.Exit(0)
-				break
+			if !ok || strings.Contains(text, game.SC_DISCONNECT) {
+				disconnect = true
+			} else {
+				command := strings.Split(text, game.SPLIT)
+				if strings.Contains(command[1], game.SC_START) {
+					strToType = command[2]
+					game.RunGame = true
+				}
 			}
 		}
 	}
+}
+
+func loop() {
+	giu.PushColorWindowBg(game.DGRAY)
+	if !addrSet {
+		game.GUI.Layout(giu.Row(giu.Label("Address : "), giu.InputText(&game.ADDR)),
+			giu.Row(giu.Label("Name : "), giu.InputText(&game.NAME)))
+		game.GUI.RegisterKeyboardShortcuts(giu.WindowShortcut{
+			Key: giu.KeyEnter,
+			Callback: func() {
+				addrSet = true
+				conn, _ = net.Dial("tcp", game.ADDR)
+				go readConnection(conn)
+				thisPlayer := game.MakePlayer(game.SimpleName(game.NAME), 0, 0)
+				fmt.Println(game.CC_JOIN + game.SPLIT + thisPlayer.Write())
+				conn.Write([]byte(game.CC_JOIN + game.SPLIT + thisPlayer.Write()))
+			}})
+	} else if disconnect {
+		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(game.CENTER_X + "Disconnected!")))
+		game.GUI.RegisterKeyboardShortcuts(giu.WindowShortcut{
+			Key: giu.KeyEnter,
+			Callback: func() {
+				os.Exit(0)
+			}})
+	} else if game.RunGame {
+		game.GameRun(strToType)
+	} else {
+		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(game.CENTER_X + "Waiting for host...")))
+	}
+	giu.PopStyleColor()
 }
