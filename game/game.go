@@ -50,7 +50,7 @@ func registerKey(char rune) {
 		}
 	}
 	keyWidgetStr = newKeyWidgetStr
-	Players[comms.ADDR] = myPlayer
+	Players[comms.ID] = myPlayer
 }
 
 func resetStats() {
@@ -66,10 +66,10 @@ func resetTimer() {
 }
 
 func getWinner() string {
-	winner := comms.ADDR
-	for addr, player := range Players {
+	winner := comms.ID
+	for id, player := range Players {
 		if getWPM(player, c.TIMER) > getWPM(Players[winner], c.TIMER) {
-			winner = addr
+			winner = id
 		}
 	}
 	return Players[winner].Name

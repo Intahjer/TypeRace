@@ -15,7 +15,12 @@ import (
 var playerSpace = 5
 var LOCAL_MODE = ""
 var test = "Jerin is a guy that made this. This string is to test the wpm accurancy which as of now should be sixty or so since these are easy words."
-var clientStatus = make(map[net.Conn]bool)
+var clientStatus = make(map[net.Conn]ClientData)
+
+type ClientData struct {
+	id      string
+	playing bool
+}
 
 func main() {
 	game.NAME = "Host"
@@ -31,7 +36,7 @@ func connectionLoop(listener net.Listener) {
 }
 
 func handleConnection(conn net.Conn) {
-	clientStatus[conn] = false
+	clientStatus[conn] = ClientData{"", false}
 	scanner := bufio.NewScanner(conn)
 	for {
 		ok := scanner.Scan()
@@ -43,8 +48,8 @@ func handleConnection(conn net.Conn) {
 }
 
 func clientsPlaying() bool {
-	for _, isTyping := range clientStatus {
-		if isTyping {
+	for _, data := range clientStatus {
+		if data.playing {
 			return true
 		}
 	}
@@ -68,20 +73,31 @@ func handleMessage(message string, conn net.Conn) {
 			comms.Write(conn, comms.SC_DISCONNECT)
 			return
 		}
-		updatePlayer(command[1], conn)
+		updatePlayer(command[2], conn)
 		return
 	}
 }
 
-func updatePlayer(update string, conn net.Conn) {
-	playerUpdate := game.ReadPlayer(update)
-	playerStored := game.Players[conn.RemoteAddr().String()]
-	if playerUpdate.KeysCorrect > playerStored.KeysCorrect {
-		clientStatus[conn] = true
-	} else {
-		clientStatus[conn] = false
+func sendStatusAll() {
+	for {
+		for id, player := range game.Players {
+			status := []string{comms.SC_PLAYER, id, player.WritePlayer()}
+			writeToClients(status)
+		}
+		comms.Tick()
 	}
-	game.Players[conn.RemoteAddr().String()] = playerUpdate
+}
+
+func updatePlayer(update string, conn net.Conn) {
+	playerId := clientStatus[conn].id
+	playerUpdate := game.ReadPlayer(update)
+	playerStored := game.Players[playerId]
+	if playerUpdate.KeysCorrect > playerStored.KeysCorrect {
+		clientStatus[conn] = ClientData{playerId, true}
+	} else {
+		clientStatus[conn] = ClientData{playerId, false}
+	}
+	game.Players[playerId] = playerUpdate
 }
 
 func mainLoop() {
@@ -110,6 +126,7 @@ func connect() {
 	if comms.ADDR != LOCAL_MODE {
 		listener, _ := net.Listen("tcp", comms.ADDR)
 		go connectionLoop(listener)
+		go sendStatusAll()
 	}
 	game.MakeMyPlayer()
 }

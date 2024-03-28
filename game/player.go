@@ -18,7 +18,7 @@ func MakePlayer(name string, keysCorrect int, keysPressed int) PlayerInfo {
 }
 
 func GetMyPlayer() PlayerInfo {
-	return Players[comms.ADDR]
+	return Players[comms.ID]
 }
 
 func (p *PlayerInfo) WritePlayer() string {
@@ -33,5 +33,5 @@ func ReadPlayer(str string) PlayerInfo {
 }
 
 func MakeMyPlayer() {
-	Players[comms.ADDR] = MakePlayer(NAME, 0, 0)
+	Players[comms.ID] = MakePlayer(NAME, 0, 0)
 }

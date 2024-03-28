@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"net"
 	"strings"
-	"time"
 
 	"TypeRace/comms"
 	c "TypeRace/constants"
@@ -15,7 +14,6 @@ import (
 
 var disconnect = false
 var gameString string
-var updateInterval = 1 * time.Second
 
 func main() {
 	game.NAME = "Client"
@@ -32,7 +30,10 @@ func readConnection(conn net.Conn) {
 				disconnect = true
 			} else {
 				command := strings.Split(text, comms.SPLIT)
-				if strings.Contains(command[0], comms.SC_START) {
+				switch command[0] {
+				case comms.SC_PLAYER:
+					game.Players[command[1]] = game.ReadPlayer(command[2])
+				case comms.SC_START:
 					gameString = command[1]
 					game.RunGame = true
 				}
@@ -44,8 +45,8 @@ func readConnection(conn net.Conn) {
 func sendStatus(conn net.Conn) {
 	for {
 		myPlayer := game.GetMyPlayer()
-		comms.Write(conn, comms.CC_UPDATE, myPlayer.WritePlayer())
-		time.Sleep(updateInterval)
+		comms.Write(conn, comms.CC_UPDATE, comms.ID, myPlayer.WritePlayer())
+		comms.Tick()
 	}
 
 }
@@ -59,6 +60,7 @@ func mainLoop() {
 		game.GameRun(gameString)
 	} else {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for host...")))
+		game.DisplayWinner()
 	}
 }
 
