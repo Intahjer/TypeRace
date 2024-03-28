@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 var SC_START = "sc01"
 var SC_DISCONNECT = "sc02"
+var SC_WINNER = "sc03"
 var CC_JOIN = "cc01"
 var SPLIT = ":"
 var WNAME = "Typing Game"
@@ -43,13 +45,13 @@ var RunGame = false
 var countDown = time.Now()
 
 func MakePlayer(name string, keysCorrect int, keysPressed int) PlayerInfo {
-	return PlayerInfo{SimpleName(name), keysCorrect, keysPressed}
+	return PlayerInfo{simpleName(name), keysCorrect, keysPressed}
 }
 
 type PlayerInfo struct {
-	name        string
-	keysCorrect int
-	keysPressed int
+	Name        string
+	KeysCorrect int
+	KeysPressed int
 }
 
 type Key struct {
@@ -129,17 +131,23 @@ func getKeyWidget(w []KeyWidget) []giu.Widget {
 
 func getSprites(playerStats map[string]PlayerInfo) []giu.Widget {
 	layouts := []giu.Widget{}
-	for _, info := range playerStats {
+	keys := make([]string, 0, len(playerStats))
+	for k := range playerStats {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		info := playerStats[key]
 		space := " "
-		for u := 0; u < info.keysCorrect/2; u++ {
+		for u := 0; u < info.KeysCorrect/2; u++ {
 			space += " "
 		}
-		jet := ((100 * (info.keysCorrect + 1)) / (info.keysPressed + 1)) / 10
+		jet := ((100 * (info.KeysCorrect + 1)) / (info.KeysPressed + 1)) / 10
 		if jet < 6 {
 			jet = 6
 		}
 		jet -= 5
-		layouts = append(layouts, giu.Style().SetFontSize(20).To(giu.Row(giu.Label(space), giu.Label("\n"+info.name), giu.ImageWithFile("sprites\\Jet"+fmt.Sprint(jet)+".png"))))
+		layouts = append(layouts, giu.Style().SetFontSize(20).To(giu.Row(giu.Label(space), giu.Label("\n"+info.Name), giu.ImageWithFile("sprites\\Jet"+fmt.Sprint(jet)+".png"))))
 	}
 	return layouts
 }
@@ -275,7 +283,7 @@ func (w *WpmWidget) Build() {
 }
 
 func (p *PlayerInfo) Write() string {
-	return p.name + ">" + strconv.Itoa(p.keysCorrect) + ">" + strconv.Itoa(p.keysPressed)
+	return p.Name + ">" + strconv.Itoa(p.KeysCorrect) + ">" + strconv.Itoa(p.KeysPressed)
 }
 
 func getWPM(timeElapsed int) int {
@@ -286,10 +294,25 @@ func getWPM(timeElapsed int) int {
 	}
 }
 
+func GetWPM(player PlayerInfo, timeElapsed int) int {
+	if timeElapsed != 0 && player.KeysPressed != 0 {
+		return int(((float64(player.KeysPressed) / 5.0) / (float64(timeElapsed) / 60.0)) * (float64(player.KeysCorrect) / float64(player.KeysPressed)))
+	} else {
+		return 0
+	}
+}
+
 func GameRun(str string) {
 	if timerDone {
 		timer = time.Now().Add(time.Duration(TIMER+COUNTDOWN) * time.Second)
 		countDown = time.Now().Add(time.Duration(COUNTDOWN) * time.Second)
+		for name, player := range Players {
+			Players[name] = MakePlayer(player.Name, 0, 0)
+		}
+		wpm = 0
+		keysCorrect = 0
+		keysPressed = 0
+		characterIndex = 0
 		timerDone = false
 		keyWidgetStr = createKeyWidget(str)
 	} else if !time.Now().After(countDown) {
@@ -307,13 +330,12 @@ func GameRun(str string) {
 		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(label)))
 		giu.Update()
 	} else {
-		giu.Update()
 		GUI.RegisterKeyboardShortcuts(getRKS()...).Layout(getKeyWidget(keyWidgetStr)...)
 		giu.Update()
 	}
 }
 
-func SimpleName(str string) string {
+func simpleName(str string) string {
 	corrLett := []rune{}
 	for _, lett := range str {
 		if (lett > 64 && lett < 91) || (lett > 96 && lett < 123) {

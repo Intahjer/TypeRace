@@ -29,8 +29,8 @@ func readConnection(conn net.Conn) {
 				disconnect = true
 			} else {
 				command := strings.Split(text, game.SPLIT)
-				if strings.Contains(command[1], game.SC_START) {
-					strToType = command[2]
+				if strings.Contains(command[0], game.SC_START) {
+					strToType = command[1]
 					game.RunGame = true
 				}
 			}
