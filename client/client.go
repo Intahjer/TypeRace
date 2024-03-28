@@ -8,17 +8,18 @@ import (
 	"time"
 
 	"TypeRace/comms"
+	c "TypeRace/constants"
 
 	"github.com/AllenDang/giu"
 )
 
 var disconnect = false
-var strToType string
+var gameString string
 var updateInterval = 1 * time.Second
 
 func main() {
 	game.NAME = "Client"
-	game.GameLoop(clientLoop)
+	game.GameLoop(mainLoop)
 }
 
 func readConnection(conn net.Conn) {
@@ -32,7 +33,7 @@ func readConnection(conn net.Conn) {
 			} else {
 				command := strings.Split(text, comms.SPLIT)
 				if strings.Contains(command[0], comms.SC_START) {
-					strToType = command[1]
+					gameString = command[1]
 					game.RunGame = true
 				}
 			}
@@ -42,27 +43,28 @@ func readConnection(conn net.Conn) {
 
 func sendStatus(conn net.Conn) {
 	for {
-		thisPlayer := game.ThisPlayer()
-		comms.Write(conn, comms.CC_JOIN, thisPlayer.Write())
+		myPlayer := game.GetMyPlayer()
+		comms.Write(conn, comms.CC_UPDATE, myPlayer.WritePlayer())
 		time.Sleep(updateInterval)
 	}
 
 }
 
-func clientLoop() {
+func mainLoop() {
 	if game.StartScreen {
-		game.DisplayStartScreen(clientConnect)
+		game.DisplayStartScreen(connect)
 	} else if disconnect {
-		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(game.CENTER_X + "Disconnected!")))
+		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Disconnected!")))
 	} else if game.RunGame {
-		game.GameRun(strToType)
+		game.GameRun(gameString)
 	} else {
-		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(game.CENTER_X + "Waiting for host...")))
+		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for host...")))
 	}
 }
 
-func clientConnect() {
+func connect() {
 	conn, _ := net.Dial("tcp", comms.ADDR)
+	game.MakeMyPlayer()
 	go readConnection(conn)
 	go sendStatus(conn)
 }

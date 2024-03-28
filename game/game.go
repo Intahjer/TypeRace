@@ -2,107 +2,99 @@ package game
 
 import (
 	"fmt"
-	"image"
-	"image/color"
-	"sort"
-	"strconv"
-	"strings"
 	"time"
 
 	"TypeRace/comms"
-	"TypeRace/constants"
+	c "TypeRace/constants"
 
 	"github.com/AllenDang/giu"
 )
 
-var WNAME = "Typing Game"
 var NAME string
-var EOF = "\n"
-var CENTER_X = "\n\n\n\n\n\n\n"
-var TIMER = 30
-var COUNTDOWN = 4
-var WIDTH = 1280
-var HEIGHT = 640
-var WINDOW = giu.NewMasterWindow(WNAME, WIDTH, HEIGHT, 0)
-var GUI = giu.SingleWindow()
 var keyWidgetStr []KeyWidget
 var timer time.Time
-var characterIndex = 0
-var keysPressed = 0
-var keysCorrect = 0
-var wpm = 0
 var Players = make(map[string]PlayerInfo)
-var keys = make(map[rune]Key)
 var timerDone = true
 var RunGame = false
 var countDown = time.Now()
 var StartScreen = true
+var WINDOW = giu.NewMasterWindow(c.WNAME, c.WIDTH, c.HEIGHT, 0)
+var GUI = giu.SingleWindow()
 
-func MakePlayer(name string, keysCorrect int, keysPressed int) PlayerInfo {
-	return PlayerInfo{simpleName(name), keysCorrect, keysPressed}
+func GameRun(str string) {
+	if timerDone {
+		resetStats()
+		resetTimer()
+		keyWidgetStr = createKeyWidget(str)
+	} else if !time.Now().After(countDown) {
+		displayCountdown()
+	} else {
+		displayGame()
+	}
+	giu.Update()
 }
-
-type PlayerInfo struct {
-	Name        string
-	KeysCorrect int
-	KeysPressed int
-}
-
-type Key struct {
-	key     giu.Key
-	size    int
-	shifted bool
-}
-
-type WpmWidget struct {
-	wpm int
-	x   int
-	y   int
-}
-
-type KeyWidget struct {
-	x     int
-	y     int
-	text  rune
-	color color.RGBA
-}
-
-func keyPress(char rune) {
+func registerKey(char rune) {
 	newKeyWidgetStr := []KeyWidget{}
-	keysPressed++
+	myPlayer := GetMyPlayer()
+	myPlayer.KeysPressed++
 	for currentIndex, currentChar := range keyWidgetStr {
-		if currentIndex == characterIndex {
+		if currentIndex == myPlayer.KeysPressed {
 			if currentChar.text == char {
-				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, constants.WHITE})
-				keysCorrect++
+				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, c.WHITE})
+				myPlayer.KeysCorrect++
 			} else {
-				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, constants.RED})
+				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, c.RED})
 			}
 		} else {
 			newKeyWidgetStr = append(newKeyWidgetStr, currentChar)
 		}
 	}
 	keyWidgetStr = newKeyWidgetStr
-	characterIndex++
-	Players[comms.ADDR] = PlayerInfo{NAME, keysCorrect, keysPressed}
+	Players[comms.ADDR] = myPlayer
 }
 
-func createKeyWidget(in string) []KeyWidget {
-	layouts := []KeyWidget{}
-	for _, key := range in {
-		keyWidget := KeyWidget{0, 0, key, constants.GRAY}
-		layouts = append(layouts, keyWidget)
+func resetStats() {
+	for name, player := range Players {
+		Players[name] = MakePlayer(player.Name, 0, 0)
+	}
+}
+
+func resetTimer() {
+	timer = time.Now().Add(time.Duration(c.TIMER+c.COUNTDOWN) * time.Second)
+	countDown = time.Now().Add(time.Duration(c.COUNTDOWN) * time.Second)
+	timerDone = false
+}
+
+func getWinner() string {
+	winner := comms.ADDR
+	for addr, player := range Players {
+		if getWPM(player, c.TIMER) > getWPM(Players[winner], c.TIMER) {
+			winner = addr
+		}
+	}
+	return Players[winner].Name
+}
+
+func getSpriteWidgets(playerStats map[string]PlayerInfo) []giu.Widget {
+	layouts := []giu.Widget{}
+	keys := c.SortStrKeys(playerStats)
+	for _, key := range keys {
+		player := playerStats[key]
+		layouts = append(layouts, giu.Style().SetFontSize(20).To(giu.Row(
+			giu.Label(getDistance(player)),
+			giu.Label("\n"+player.Name),
+			giu.ImageWithFile(getImage(player)))))
 	}
 	return layouts
 }
 
-func getKeyWidget(w []KeyWidget) []giu.Widget {
+func getGameWidgets(w []KeyWidget) []giu.Widget {
 	layouts := []giu.Widget{}
 	if int(time.Until(timer).Seconds()) > 0 {
 		widgetLocX := 0
 		widgetLocY := 0
 		for _, key := range w {
-			if widgetLocX/(WIDTH-40) != 0 {
+			if widgetLocX/(c.WIDTH-40) != 0 {
 				widgetLocY++
 				widgetLocX = 0
 			}
@@ -111,10 +103,9 @@ func getKeyWidget(w []KeyWidget) []giu.Widget {
 			widgetLocX += keys[key.text].size
 		}
 		tick := int(time.Until(timer).Seconds())
-		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{tick, WIDTH - 40, HEIGHT - 40}))
-		wpm = getWPM(TIMER - tick)
-		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{wpm, 8, HEIGHT - 40}))
-		layouts = append(layouts, getSprites(Players)...)
+		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{tick, c.WIDTH - 40, c.HEIGHT - 40}))
+		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{getWPM(GetMyPlayer(), c.TIMER-tick), 8, c.HEIGHT - 40}))
+		layouts = append(layouts, getSpriteWidgets(Players)...)
 	} else {
 		timerDone = true
 		RunGame = false
@@ -123,172 +114,26 @@ func getKeyWidget(w []KeyWidget) []giu.Widget {
 	return layouts
 }
 
-func getSprites(playerStats map[string]PlayerInfo) []giu.Widget {
-	layouts := []giu.Widget{}
-	keys := make([]string, 0, len(playerStats))
-	for k := range playerStats {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		info := playerStats[key]
-		space := " "
-		for u := 0; u < info.KeysCorrect/2; u++ {
-			space += " "
-		}
-		jet := ((100 * (info.KeysCorrect + 1)) / (info.KeysPressed + 1)) / 10
-		if jet < 6 {
-			jet = 6
-		}
-		jet -= 5
-		layouts = append(layouts, giu.Style().SetFontSize(20).To(giu.Row(giu.Label(space), giu.Label("\n"+info.Name), giu.ImageWithFile("sprites\\Jet"+fmt.Sprint(jet)+".png"))))
-	}
-	return layouts
+func getStartWidgets() []giu.Widget {
+	return append(comms.SetAddr(), SetName()...)
 }
 
-func getRKS() []giu.WindowShortcut {
-	keys['a'] = Key{giu.KeyA, 12, false}
-	keys['b'] = Key{giu.KeyB, 15, false}
-	keys['c'] = Key{giu.KeyC, 12, false}
-	keys['d'] = Key{giu.KeyD, 14, false}
-	keys['e'] = Key{giu.KeyE, 14, false}
-	keys['f'] = Key{giu.KeyF, 8, false}
-	keys['g'] = Key{giu.KeyG, 13, false}
-	keys['h'] = Key{giu.KeyH, 14, false}
-	keys['i'] = Key{giu.KeyI, 5, false}
-	keys['j'] = Key{giu.KeyJ, 5, false}
-	keys['k'] = Key{giu.KeyK, 12, false}
-	keys['l'] = Key{giu.KeyL, 5, false}
-	keys['m'] = Key{giu.KeyM, 22, false}
-	keys['n'] = Key{giu.KeyN, 14, false}
-	keys['o'] = Key{giu.KeyO, 14, false}
-	keys['p'] = Key{giu.KeyP, 15, false}
-	keys['q'] = Key{giu.KeyQ, 14, false}
-	keys['r'] = Key{giu.KeyR, 10, false}
-	keys['s'] = Key{giu.KeyS, 11, false}
-	keys['t'] = Key{giu.KeyT, 9, false}
-	keys['u'] = Key{giu.KeyU, 15, false}
-	keys['v'] = Key{giu.KeyV, 14, false}
-	keys['w'] = Key{giu.KeyW, 22, false}
-	keys['x'] = Key{giu.KeyX, 13, false}
-	keys['y'] = Key{giu.KeyY, 13, false}
-	keys['z'] = Key{giu.KeyZ, 12, false}
-	keys['A'] = Key{giu.KeyA, 16, true}
-	keys['B'] = Key{giu.KeyB, 15, true}
-	keys['C'] = Key{giu.KeyC, 15, true}
-	keys['D'] = Key{giu.KeyD, 17, true}
-	keys['E'] = Key{giu.KeyE, 13, true}
-	keys['F'] = Key{giu.KeyF, 13, true}
-	keys['G'] = Key{giu.KeyG, 17, true}
-	keys['H'] = Key{giu.KeyH, 16, true}
-	keys['I'] = Key{giu.KeyI, 8, true}
-	keys['J'] = Key{giu.KeyJ, 8, true}
-	keys['K'] = Key{giu.KeyK, 15, true}
-	keys['L'] = Key{giu.KeyL, 13, true}
-	keys['M'] = Key{giu.KeyM, 22, true}
-	keys['N'] = Key{giu.KeyN, 18, true}
-	keys['O'] = Key{giu.KeyO, 18, true}
-	keys['P'] = Key{giu.KeyP, 15, true}
-	keys['Q'] = Key{giu.KeyQ, 19, true}
-	keys['R'] = Key{giu.KeyR, 16, true}
-	keys['S'] = Key{giu.KeyS, 14, true}
-	keys['T'] = Key{giu.KeyT, 15, true}
-	keys['U'] = Key{giu.KeyU, 18, true}
-	keys['V'] = Key{giu.KeyV, 17, true}
-	keys['W'] = Key{giu.KeyW, 25, true}
-	keys['X'] = Key{giu.KeyX, 16, true}
-	keys['Y'] = Key{giu.KeyY, 15, true}
-	keys['Z'] = Key{giu.KeyZ, 14, true}
-	keys[' '] = Key{giu.KeySpace, 6, false}
-	keys['`'] = Key{giu.KeyGraveAccent, 7, false}
-	keys['1'] = Key{giu.Key1, 14, false}
-	keys['2'] = Key{giu.Key2, 14, false}
-	keys['3'] = Key{giu.Key3, 15, false}
-	keys['4'] = Key{giu.Key4, 14, false}
-	keys['5'] = Key{giu.Key5, 14, false}
-	keys['6'] = Key{giu.Key6, 14, false}
-	keys['7'] = Key{giu.Key7, 14, false}
-	keys['8'] = Key{giu.Key8, 15, false}
-	keys['9'] = Key{giu.Key9, 15, false}
-	keys['0'] = Key{giu.Key0, 15, false}
-	keys['-'] = Key{giu.KeyMinus, 9, false}
-	keys['='] = Key{giu.KeyEqual, 13, false}
-	keys['['] = Key{giu.KeyLeftBracket, 11, false}
-	keys[']'] = Key{giu.KeyRightBracket, 11, false}
-	keys['\\'] = Key{giu.KeyBackslash, 12, false}
-	keys[';'] = Key{giu.KeySemicolon, 9, false}
-	keys['\''] = Key{giu.KeyApostrophe, 7, false}
-	keys[','] = Key{giu.KeyComma, 8, false}
-	keys['.'] = Key{giu.KeyPeriod, 8, false}
-	keys['/'] = Key{giu.KeySlash, 11, false}
-	keys['~'] = Key{giu.KeyGraveAccent, 12, true}
-	keys['!'] = Key{giu.Key1, 8, true}
-	keys['@'] = Key{giu.Key2, 25, true}
-	keys['#'] = Key{giu.Key3, 14, true}
-	keys['$'] = Key{giu.Key4, 15, true}
-	keys['%'] = Key{giu.Key5, 21, true}
-	keys['^'] = Key{giu.Key6, 13, true}
-	keys['&'] = Key{giu.Key7, 17, true}
-	keys['*'] = Key{giu.Key8, 12, true}
-	keys['('] = Key{giu.Key9, 10, true}
-	keys[')'] = Key{giu.Key0, 10, true}
-	keys['_'] = Key{giu.KeyMinus, 11, true}
-	keys['+'] = Key{giu.KeyEqual, 15, true}
-	keys['{'] = Key{giu.KeyLeftBracket, 11, true}
-	keys['}'] = Key{giu.KeyRightBracket, 11, true}
-	keys['|'] = Key{giu.KeyBackslash, 9, true}
-	keys[':'] = Key{giu.KeySemicolon, 9, true}
-	keys['"'] = Key{giu.KeyApostrophe, 9, true}
-	keys['<'] = Key{giu.KeyComma, 14, true}
-	keys['>'] = Key{giu.KeyPeriod, 14, true}
-	keys['?'] = Key{giu.KeySlash, 13, true}
-	rks := []giu.WindowShortcut{}
-	for k, v := range keys {
-		if v.shifted {
-			rks = append(rks, giu.WindowShortcut{
-				Key:      v.key,
-				Modifier: giu.ModShift,
-				Callback: func() { keyPress(k) }})
-		} else {
-			rks = append(rks, giu.WindowShortcut{
-				Key:      v.key,
-				Callback: func() { keyPress(k) }})
-		}
-	}
-	return rks
-}
-
-func (w *KeyWidget) Build() {
-	pos := image.Pt(8, 8+(HEIGHT/2)).Add(image.Pt(w.x, (w.y * 32)))
-	canvas := giu.GetCanvas()
-	buildStr := string(w.text)
-	if w.text == ' ' {
-		buildStr = "."
-		pos = pos.Add(image.Pt(0, -6))
-	}
-	canvas.AddText(pos, w.color, buildStr)
-}
-
-func (w *WpmWidget) Build() {
-	pos := image.Pt(w.x, w.y)
-	canvas := giu.GetCanvas()
-	buildStr := strconv.Itoa(w.wpm)
-	canvas.AddText(pos, constants.WHITE, buildStr)
-}
-
-func (p *PlayerInfo) Write() string {
-	return p.Name + ">" + strconv.Itoa(p.KeysCorrect) + ">" + strconv.Itoa(p.KeysPressed)
-}
-
-func getWPM(timeElapsed int) int {
-	if timeElapsed != 0 && keysPressed != 0 {
-		return int(((float64(keysPressed) / 5.0) / (float64(timeElapsed) / 60.0)) * (float64(keysCorrect) / float64(keysPressed)))
+func getCountdownWidget() giu.Widget {
+	left := time.Until(countDown)
+	var label giu.Widget
+	if left > 3*time.Second {
+		label = giu.Label(c.CENTER_X + "3")
+	} else if left > 2*time.Second {
+		label = giu.Label(c.CENTER_X + "2")
+	} else if left > 1*time.Second {
+		label = giu.Label(c.CENTER_X + "1")
 	} else {
-		return 0
+		label = giu.Label(c.CENTER_X + "GO")
 	}
+	return label
 }
 
-func GetWPM(player PlayerInfo, timeElapsed int) int {
+func getWPM(player PlayerInfo, timeElapsed int) int {
 	if timeElapsed != 0 && player.KeysPressed != 0 {
 		return int(((float64(player.KeysPressed) / 5.0) / (float64(timeElapsed) / 60.0)) * (float64(player.KeysCorrect) / float64(player.KeysPressed)))
 	} else {
@@ -296,118 +141,19 @@ func GetWPM(player PlayerInfo, timeElapsed int) int {
 	}
 }
 
-func resetStats() {
-	for name, player := range Players {
-		Players[name] = MakePlayer(player.Name, 0, 0)
+func getImage(player PlayerInfo) string {
+	damage := ((100 * (player.KeysCorrect + 1)) / (player.KeysPressed + 1)) / 10
+	if damage < 6 {
+		damage = 6
 	}
-	wpm = 0
-	keysCorrect = 0
-	keysPressed = 0
-	characterIndex = 0
+	damage -= 5
+	return "sprites\\Jet" + fmt.Sprint(damage) + ".png"
 }
 
-func resetTimer() {
-	timer = time.Now().Add(time.Duration(TIMER+COUNTDOWN) * time.Second)
-	countDown = time.Now().Add(time.Duration(COUNTDOWN) * time.Second)
-	timerDone = false
-}
-
-func countdown() giu.Widget {
-	left := time.Until(countDown)
-	var label giu.Widget
-	if left > 3*time.Second {
-		label = giu.Label(CENTER_X + "3")
-	} else if left > 2*time.Second {
-		label = giu.Label(CENTER_X + "2")
-	} else if left > 1*time.Second {
-		label = giu.Label(CENTER_X + "1")
-	} else {
-		label = giu.Label(CENTER_X + "GO")
+func getDistance(player PlayerInfo) string {
+	space := " "
+	for u := 0; u < player.KeysCorrect/2; u++ {
+		space += " "
 	}
-	return label
-}
-
-func GameRun(str string) {
-	if timerDone {
-		resetStats()
-		resetTimer()
-		keyWidgetStr = createKeyWidget(str)
-	} else if !time.Now().After(countDown) {
-		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(countdown())))
-		giu.Update()
-	} else {
-		GUI.RegisterKeyboardShortcuts(getRKS()...).Layout(getKeyWidget(keyWidgetStr)...)
-		giu.Update()
-	}
-}
-
-func simpleName(str string) string {
-	corrLett := []rune{}
-	for _, lett := range str {
-		if (lett > 64 && lett < 91) || (lett > 96 && lett < 123) {
-			corrLett = append(corrLett, lett)
-		}
-	}
-	simpleName := string(corrLett)
-	if simpleName == "" {
-		simpleName = "Guest"
-	}
-	return simpleName
-}
-
-func ReadPlayer(str string) PlayerInfo {
-	playerData := strings.Split(str, ">")
-	arg2, _ := strconv.Atoi(playerData[1])
-	arg3, _ := strconv.Atoi(playerData[2])
-	return PlayerInfo{playerData[0], arg2, arg3}
-}
-
-func ThisPlayer() PlayerInfo {
-	return MakePlayer(NAME, keysCorrect, keysPressed)
-}
-
-func GameLoop(loop func()) {
-	styleLoop := func() {
-		giu.PushColorWindowBg(constants.DGRAY)
-		loop()
-		giu.PopStyleColor()
-	}
-	WINDOW.Run(styleLoop)
-}
-
-func SetName() []giu.Widget {
-	return []giu.Widget{giu.Row(giu.Label("Name : "), giu.InputText(&NAME))}
-}
-
-func getStartWidgets() []giu.Widget {
-	return append(comms.SetAddr(), SetName()...)
-}
-
-func DisplayStartScreen(onEnter func()) {
-	GUI.Layout(getStartWidgets()...)
-	EnterInput(func() {
-		onEnter()
-		StartScreen = false
-	})
-}
-
-func EnterInput(onEnter func()) {
-	GUI.RegisterKeyboardShortcuts(giu.WindowShortcut{
-		Key:      giu.KeyEnter,
-		Callback: onEnter,
-	})
-}
-
-func getWinner() string {
-	winner := comms.ADDR
-	for addr, player := range Players {
-		if GetWPM(player, TIMER) > GetWPM(Players[winner], TIMER) {
-			winner = addr
-		}
-	}
-	return Players[winner].Name
-}
-
-func DisplayWinner() {
-	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(giu.Label(CENTER_X + "WINNER : " + getWinner()))))
+	return space
 }

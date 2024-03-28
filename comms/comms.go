@@ -9,7 +9,7 @@ import (
 var SC_START = "sc01"
 var SC_DISCONNECT = "sc02"
 var SC_WINNER = "sc03"
-var CC_JOIN = "cc01"
+var CC_UPDATE = "cc01"
 var SPLIT = ":"
 var EOF = "\n"
 var ADDR = ":8787"

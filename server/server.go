@@ -2,11 +2,11 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"strings"
 
 	"TypeRace/comms"
+	c "TypeRace/constants"
 	"TypeRace/game"
 
 	"github.com/AllenDang/giu"
@@ -19,7 +19,7 @@ var clientStatus = make(map[net.Conn]bool)
 
 func main() {
 	game.NAME = "Host"
-	game.GameLoop(serverLoop)
+	game.GameLoop(mainLoop)
 }
 
 func connectionLoop(listener net.Listener) {
@@ -31,9 +31,7 @@ func connectionLoop(listener net.Listener) {
 }
 
 func handleConnection(conn net.Conn) {
-	remoteAddr := conn.RemoteAddr().String()
 	clientStatus[conn] = false
-	fmt.Println("Client connected from " + remoteAddr)
 	scanner := bufio.NewScanner(conn)
 	for {
 		ok := scanner.Scan()
@@ -41,11 +39,10 @@ func handleConnection(conn net.Conn) {
 			break
 		}
 		handleMessage(scanner.Text(), conn)
-		fmt.Println("Client disconnected from " + remoteAddr)
 	}
 }
 
-func clientsStillPlaying() bool {
+func clientsPlaying() bool {
 	for _, isTyping := range clientStatus {
 		if isTyping {
 			return true
@@ -55,7 +52,7 @@ func clientsStillPlaying() bool {
 }
 
 func writeToClients(messages []string) {
-	for conn, _ := range clientStatus {
+	for conn := range clientStatus {
 		_, err := comms.Write(conn, messages...)
 		if err != nil {
 			delete(clientStatus, conn)
@@ -64,51 +61,55 @@ func writeToClients(messages []string) {
 }
 
 func handleMessage(message string, conn net.Conn) {
-	currentClient := conn.RemoteAddr().String()
 	command := strings.Split(message, comms.SPLIT)
-	switch {
-	case command[0] == comms.CC_JOIN:
+	switch command[0] {
+	case comms.CC_UPDATE:
 		if playerSpace <= 0 {
-			conn.Write([]byte(comms.SC_DISCONNECT + comms.SPLIT))
+			comms.Write(conn, comms.SC_DISCONNECT)
 			return
 		}
-		updatedPlayer := game.ReadPlayer(command[1])
-		player := game.Players[currentClient]
-		if updatedPlayer.KeysPressed > player.KeysPressed {
-			clientStatus[conn] = true
-		} else {
-			clientStatus[conn] = false
-		}
-		game.Players[currentClient] = updatedPlayer
+		updatePlayer(command[1], conn)
 		return
 	}
 }
 
-func serverLoop() {
+func updatePlayer(update string, conn net.Conn) {
+	playerUpdate := game.ReadPlayer(update)
+	playerStored := game.Players[conn.RemoteAddr().String()]
+	if playerUpdate.KeysCorrect > playerStored.KeysCorrect {
+		clientStatus[conn] = true
+	} else {
+		clientStatus[conn] = false
+	}
+	game.Players[conn.RemoteAddr().String()] = playerUpdate
+}
+
+func mainLoop() {
 	if game.StartScreen {
-		game.DisplayStartScreen(serverConnect)
+		game.DisplayStartScreen(connect)
 	} else if game.RunGame {
 		game.GameRun(test)
-	} else if clientsStillPlaying() {
-		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(game.CENTER_X + "Waiting for other players to finish...")))
+	} else if clientsPlaying() {
+		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for other players to finish...")))
 	} else {
-		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(game.CENTER_X + "Press enter to play")))
-		game.EnterInput(serverStart)
+		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Press enter to play")))
+		game.EnterInput(start)
 		game.DisplayWinner()
+		game.DisplayPlayers()
 	}
 }
 
-func serverStart() {
+func start() {
 	if comms.ADDR != LOCAL_MODE {
 		writeToClients([]string{comms.SC_START, test})
 	}
 	game.RunGame = true
 }
 
-func serverConnect() {
+func connect() {
 	if comms.ADDR != LOCAL_MODE {
 		listener, _ := net.Listen("tcp", comms.ADDR)
 		go connectionLoop(listener)
 	}
-	game.Players[comms.ADDR] = game.MakePlayer(game.NAME, 0, 0)
+	game.MakeMyPlayer()
 }
