@@ -6,20 +6,20 @@ import (
 	"net"
 	"strings"
 
+	"TypeRace/comms"
 	"TypeRace/game"
 
 	"github.com/AllenDang/giu"
 )
 
 var playerSpace = 5
-var addrSet = false
 var LOCAL_MODE = ""
 var test = "Jerin is a guy that made this. This string is to test the wpm accurancy which as of now should be sixty or so since these are easy words."
-var clients = []net.Conn{}
-var updating = make(map[string]bool)
+var clientStatus = make(map[net.Conn]bool)
 
 func main() {
-	game.WINDOW.Run(loop)
+	game.NAME = "Host"
+	game.GameLoop(serverLoop)
 }
 
 func connectionLoop(listener net.Listener) {
@@ -32,7 +32,7 @@ func connectionLoop(listener net.Listener) {
 
 func handleConnection(conn net.Conn) {
 	remoteAddr := conn.RemoteAddr().String()
-	clients = append(clients, conn)
+	clientStatus[conn] = false
 	fmt.Println("Client connected from " + remoteAddr)
 	scanner := bufio.NewScanner(conn)
 	for {
@@ -46,87 +46,69 @@ func handleConnection(conn net.Conn) {
 }
 
 func clientsStillPlaying() bool {
-	for _, isStillPlaying := range updating {
-		if isStillPlaying {
+	for _, isTyping := range clientStatus {
+		if isTyping {
 			return true
 		}
 	}
 	return false
 }
 
-func writeToClients(message string) {
-	for _, conn := range clients {
-		idx, err := conn.Write([]byte(message + "\n"))
+func writeToClients(messages []string) {
+	for conn, _ := range clientStatus {
+		_, err := comms.Write(conn, messages...)
 		if err != nil {
-			clients = append(clients[:idx], clients[idx+1:]...)
+			delete(clientStatus, conn)
 		}
 	}
 }
 
 func handleMessage(message string, conn net.Conn) {
 	currentClient := conn.RemoteAddr().String()
-	command := strings.Split(message, game.SPLIT)
+	command := strings.Split(message, comms.SPLIT)
 	switch {
-	case command[0] == game.CC_JOIN:
+	case command[0] == comms.CC_JOIN:
 		if playerSpace <= 0 {
-			conn.Write([]byte(game.SC_DISCONNECT + game.SPLIT))
+			conn.Write([]byte(comms.SC_DISCONNECT + comms.SPLIT))
 			return
 		}
 		updatedPlayer := game.ReadPlayer(command[1])
 		player := game.Players[currentClient]
 		if updatedPlayer.KeysPressed > player.KeysPressed {
-			updating[currentClient] = true
+			clientStatus[conn] = true
 		} else {
-			updating[currentClient] = false
+			clientStatus[conn] = false
 		}
 		game.Players[currentClient] = updatedPlayer
 		return
 	}
 }
 
-func getWinner() string {
-	winner := game.ADDR
-	for addr, player := range game.Players {
-		if game.GetWPM(player, game.TIMER) > game.GetWPM(game.Players[winner], game.TIMER) {
-			winner = addr
-		}
-	}
-	return game.Players[winner].Name
-}
-
-func loop() {
-	giu.PushColorWindowBg(game.DGRAY)
-	if !addrSet {
-		game.GUI.Layout(giu.Row(giu.Label("Address : "), giu.InputText(&game.ADDR)),
-			giu.Row(giu.Label("Name : "), giu.InputText(&game.NAME)))
-		game.GUI.RegisterKeyboardShortcuts(giu.WindowShortcut{
-			Key: giu.KeyEnter,
-			Callback: func() {
-				addrSet = true
-				if game.ADDR != LOCAL_MODE {
-					listener, _ := net.Listen("tcp", game.ADDR)
-					go connectionLoop(listener)
-				}
-				game.Players[game.ADDR] = game.MakePlayer(game.NAME, 0, 0)
-				playerSpace--
-			}})
+func serverLoop() {
+	if game.StartScreen {
+		game.DisplayStartScreen(serverConnect)
 	} else if game.RunGame {
 		game.GameRun(test)
 	} else if clientsStillPlaying() {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(game.CENTER_X + "Waiting for other players to finish...")))
 	} else {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(game.CENTER_X + "Press enter to play")))
-		game.GUI.RegisterKeyboardShortcuts(giu.WindowShortcut{
-			Key: giu.KeyEnter,
-			Callback: func() {
-				if game.ADDR != LOCAL_MODE {
-					writeToClients(game.SC_START + game.SPLIT + test)
-				}
-				game.RunGame = true
-			}})
-		if game.ThisPlayer().KeysPressed != 0 {
-			game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(giu.Label(game.CENTER_X + "WINNER : " + getWinner()))))
-		}
+		game.EnterInput(serverStart)
+		game.DisplayWinner()
 	}
-	giu.PopStyleColor()
+}
+
+func serverStart() {
+	if comms.ADDR != LOCAL_MODE {
+		writeToClients([]string{comms.SC_START, test})
+	}
+	game.RunGame = true
+}
+
+func serverConnect() {
+	if comms.ADDR != LOCAL_MODE {
+		listener, _ := net.Listen("tcp", comms.ADDR)
+		go connectionLoop(listener)
+	}
+	game.Players[comms.ADDR] = game.MakePlayer(game.NAME, 0, 0)
 }

@@ -4,19 +4,21 @@ import (
 	"TypeRace/game"
 	"bufio"
 	"net"
-	"os"
 	"strings"
 	"time"
+
+	"TypeRace/comms"
 
 	"github.com/AllenDang/giu"
 )
 
-var addrSet = false
 var disconnect = false
 var strToType string
+var updateInterval = 1 * time.Second
 
 func main() {
-	game.WINDOW.Run(loop)
+	game.NAME = "Client"
+	game.GameLoop(clientLoop)
 }
 
 func readConnection(conn net.Conn) {
@@ -25,11 +27,11 @@ func readConnection(conn net.Conn) {
 		for {
 			ok := scanner.Scan()
 			text := scanner.Text()
-			if !ok || strings.Contains(text, game.SC_DISCONNECT) {
+			if !ok || strings.Contains(text, comms.SC_DISCONNECT) {
 				disconnect = true
 			} else {
-				command := strings.Split(text, game.SPLIT)
-				if strings.Contains(command[0], game.SC_START) {
+				command := strings.Split(text, comms.SPLIT)
+				if strings.Contains(command[0], comms.SC_START) {
 					strToType = command[1]
 					game.RunGame = true
 				}
@@ -40,38 +42,27 @@ func readConnection(conn net.Conn) {
 
 func sendStatus(conn net.Conn) {
 	for {
-		time.Sleep(1 * time.Second)
 		thisPlayer := game.ThisPlayer()
-		conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
-		conn.Write([]byte(game.CC_JOIN + game.SPLIT + thisPlayer.Write() + game.EOF))
+		comms.Write(conn, comms.CC_JOIN, thisPlayer.Write())
+		time.Sleep(updateInterval)
 	}
 
 }
 
-func loop() {
-	giu.PushColorWindowBg(game.DGRAY)
-	if !addrSet {
-		game.GUI.Layout(giu.Row(giu.Label("Address : "), giu.InputText(&game.ADDR)),
-			giu.Row(giu.Label("Name : "), giu.InputText(&game.NAME)))
-		game.GUI.RegisterKeyboardShortcuts(giu.WindowShortcut{
-			Key: giu.KeyEnter,
-			Callback: func() {
-				addrSet = true
-				conn, _ := net.Dial("tcp", game.ADDR)
-				go readConnection(conn)
-				go sendStatus(conn)
-			}})
+func clientLoop() {
+	if game.StartScreen {
+		game.DisplayStartScreen(clientConnect)
 	} else if disconnect {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(game.CENTER_X + "Disconnected!")))
-		game.GUI.RegisterKeyboardShortcuts(giu.WindowShortcut{
-			Key: giu.KeyEnter,
-			Callback: func() {
-				os.Exit(0)
-			}})
 	} else if game.RunGame {
 		game.GameRun(strToType)
 	} else {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(game.CENTER_X + "Waiting for host...")))
 	}
-	giu.PopStyleColor()
+}
+
+func clientConnect() {
+	conn, _ := net.Dial("tcp", comms.ADDR)
+	go readConnection(conn)
+	go sendStatus(conn)
 }

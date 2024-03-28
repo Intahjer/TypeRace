@@ -9,25 +9,18 @@ import (
 	"strings"
 	"time"
 
+	"TypeRace/comms"
+	"TypeRace/constants"
+
 	"github.com/AllenDang/giu"
 )
 
-var SC_START = "sc01"
-var SC_DISCONNECT = "sc02"
-var SC_WINNER = "sc03"
-var CC_JOIN = "cc01"
-var SPLIT = ":"
 var WNAME = "Typing Game"
-var ADDR = ":8000"
-var NAME = "Guest"
+var NAME string
 var EOF = "\n"
 var CENTER_X = "\n\n\n\n\n\n\n"
 var TIMER = 30
 var COUNTDOWN = 4
-var RED = color.RGBA{150, 25, 25, 225}
-var WHITE = color.RGBA{225, 225, 225, 225}
-var GRAY = color.RGBA{110, 110, 110, 225}
-var DGRAY = color.RGBA{60, 60, 60, 225}
 var WIDTH = 1280
 var HEIGHT = 640
 var WINDOW = giu.NewMasterWindow(WNAME, WIDTH, HEIGHT, 0)
@@ -43,6 +36,7 @@ var keys = make(map[rune]Key)
 var timerDone = true
 var RunGame = false
 var countDown = time.Now()
+var StartScreen = true
 
 func MakePlayer(name string, keysCorrect int, keysPressed int) PlayerInfo {
 	return PlayerInfo{simpleName(name), keysCorrect, keysPressed}
@@ -79,10 +73,10 @@ func keyPress(char rune) {
 	for currentIndex, currentChar := range keyWidgetStr {
 		if currentIndex == characterIndex {
 			if currentChar.text == char {
-				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, WHITE})
+				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, constants.WHITE})
 				keysCorrect++
 			} else {
-				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, RED})
+				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, constants.RED})
 			}
 		} else {
 			newKeyWidgetStr = append(newKeyWidgetStr, currentChar)
@@ -90,13 +84,13 @@ func keyPress(char rune) {
 	}
 	keyWidgetStr = newKeyWidgetStr
 	characterIndex++
-	Players[ADDR] = PlayerInfo{NAME, keysCorrect, keysPressed}
+	Players[comms.ADDR] = PlayerInfo{NAME, keysCorrect, keysPressed}
 }
 
 func createKeyWidget(in string) []KeyWidget {
 	layouts := []KeyWidget{}
 	for _, key := range in {
-		keyWidget := KeyWidget{0, 0, key, GRAY}
+		keyWidget := KeyWidget{0, 0, key, constants.GRAY}
 		layouts = append(layouts, keyWidget)
 	}
 	return layouts
@@ -279,7 +273,7 @@ func (w *WpmWidget) Build() {
 	pos := image.Pt(w.x, w.y)
 	canvas := giu.GetCanvas()
 	buildStr := strconv.Itoa(w.wpm)
-	canvas.AddText(pos, WHITE, buildStr)
+	canvas.AddText(pos, constants.WHITE, buildStr)
 }
 
 func (p *PlayerInfo) Write() string {
@@ -302,32 +296,44 @@ func GetWPM(player PlayerInfo, timeElapsed int) int {
 	}
 }
 
+func resetStats() {
+	for name, player := range Players {
+		Players[name] = MakePlayer(player.Name, 0, 0)
+	}
+	wpm = 0
+	keysCorrect = 0
+	keysPressed = 0
+	characterIndex = 0
+}
+
+func resetTimer() {
+	timer = time.Now().Add(time.Duration(TIMER+COUNTDOWN) * time.Second)
+	countDown = time.Now().Add(time.Duration(COUNTDOWN) * time.Second)
+	timerDone = false
+}
+
+func countdown() giu.Widget {
+	left := time.Until(countDown)
+	var label giu.Widget
+	if left > 3*time.Second {
+		label = giu.Label(CENTER_X + "3")
+	} else if left > 2*time.Second {
+		label = giu.Label(CENTER_X + "2")
+	} else if left > 1*time.Second {
+		label = giu.Label(CENTER_X + "1")
+	} else {
+		label = giu.Label(CENTER_X + "GO")
+	}
+	return label
+}
+
 func GameRun(str string) {
 	if timerDone {
-		timer = time.Now().Add(time.Duration(TIMER+COUNTDOWN) * time.Second)
-		countDown = time.Now().Add(time.Duration(COUNTDOWN) * time.Second)
-		for name, player := range Players {
-			Players[name] = MakePlayer(player.Name, 0, 0)
-		}
-		wpm = 0
-		keysCorrect = 0
-		keysPressed = 0
-		characterIndex = 0
-		timerDone = false
+		resetStats()
+		resetTimer()
 		keyWidgetStr = createKeyWidget(str)
 	} else if !time.Now().After(countDown) {
-		left := time.Until(countDown)
-		var label giu.Widget
-		if left > 3*time.Second {
-			label = giu.Label(CENTER_X + "3")
-		} else if left > 2*time.Second {
-			label = giu.Label(CENTER_X + "2")
-		} else if left > 1*time.Second {
-			label = giu.Label(CENTER_X + "1")
-		} else {
-			label = giu.Label(CENTER_X + "GO")
-		}
-		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(label)))
+		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(countdown())))
 		giu.Update()
 	} else {
 		GUI.RegisterKeyboardShortcuts(getRKS()...).Layout(getKeyWidget(keyWidgetStr)...)
@@ -358,4 +364,50 @@ func ReadPlayer(str string) PlayerInfo {
 
 func ThisPlayer() PlayerInfo {
 	return MakePlayer(NAME, keysCorrect, keysPressed)
+}
+
+func GameLoop(loop func()) {
+	styleLoop := func() {
+		giu.PushColorWindowBg(constants.DGRAY)
+		loop()
+		giu.PopStyleColor()
+	}
+	WINDOW.Run(styleLoop)
+}
+
+func SetName() []giu.Widget {
+	return []giu.Widget{giu.Row(giu.Label("Name : "), giu.InputText(&NAME))}
+}
+
+func getStartWidgets() []giu.Widget {
+	return append(comms.SetAddr(), SetName()...)
+}
+
+func DisplayStartScreen(onEnter func()) {
+	GUI.Layout(getStartWidgets()...)
+	EnterInput(func() {
+		onEnter()
+		StartScreen = false
+	})
+}
+
+func EnterInput(onEnter func()) {
+	GUI.RegisterKeyboardShortcuts(giu.WindowShortcut{
+		Key:      giu.KeyEnter,
+		Callback: onEnter,
+	})
+}
+
+func getWinner() string {
+	winner := comms.ADDR
+	for addr, player := range Players {
+		if GetWPM(player, TIMER) > GetWPM(Players[winner], TIMER) {
+			winner = addr
+		}
+	}
+	return Players[winner].Name
+}
+
+func DisplayWinner() {
+	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(giu.Label(CENTER_X + "WINNER : " + getWinner()))))
 }
