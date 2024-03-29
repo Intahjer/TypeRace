@@ -36,7 +36,6 @@ func connectionLoop(listener net.Listener) {
 }
 
 func handleConnection(conn net.Conn) {
-	clientStatus[conn] = ClientData{"", false}
 	scanner := bufio.NewScanner(conn)
 	for {
 		ok := scanner.Scan()
@@ -73,6 +72,11 @@ func handleMessage(message string, conn net.Conn) {
 			comms.Write(conn, comms.SC_DISCONNECT)
 			return
 		}
+		_, exists := clientStatus[conn]
+		if !exists {
+			clientStatus[conn] = ClientData{command[1], false}
+		}
+
 		updatePlayer(command[2], conn)
 		return
 	}
@@ -92,7 +96,7 @@ func updatePlayer(update string, conn net.Conn) {
 	playerId := clientStatus[conn].id
 	playerUpdate := game.ReadPlayer(update)
 	playerStored := game.Players[playerId]
-	if playerUpdate.KeysCorrect > playerStored.KeysCorrect {
+	if playerUpdate.KeysPressed > playerStored.KeysPressed {
 		clientStatus[conn] = ClientData{playerId, true}
 	} else {
 		clientStatus[conn] = ClientData{playerId, false}

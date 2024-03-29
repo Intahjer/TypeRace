@@ -32,7 +32,9 @@ func readConnection(conn net.Conn) {
 				command := strings.Split(text, comms.SPLIT)
 				switch command[0] {
 				case comms.SC_PLAYER:
-					game.Players[command[1]] = game.ReadPlayer(command[2])
+					if comms.ID != command[1] {
+						game.Players[command[1]] = game.ReadPlayer(command[2])
+					}
 				case comms.SC_START:
 					gameString = command[1]
 					game.RunGame = true
