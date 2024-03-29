@@ -2,6 +2,7 @@ package game
 
 import (
 	c "TypeRace/constants"
+	"strconv"
 
 	"github.com/AllenDang/giu"
 )
@@ -13,7 +14,7 @@ func DisplayWinner() {
 func DisplayPlayers() {
 	keys := c.SortStrKeys(Players)
 	for _, key := range keys {
-		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(Players[key].Name)))
+		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(Players[key].Name + " : " + strconv.Itoa(getWPM(Players[key], c.TIMER)))))
 	}
 }
 
@@ -50,4 +51,8 @@ func SetName() []giu.Widget {
 
 func displayGame() {
 	GUI.RegisterKeyboardShortcuts(getKeyInputs()...).Layout(getGameWidgets(keyWidgetStr)...)
+}
+
+func DisplayBest() {
+	GUI.Layout(getBestWidget()...)
 }

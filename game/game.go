@@ -20,6 +20,14 @@ var countDown = time.Now()
 var StartScreen = true
 var WINDOW = giu.NewMasterWindow(c.WNAME, c.WIDTH, c.HEIGHT, 0)
 var GUI = giu.SingleWindow()
+var lastBest = 0
+
+func updateBest() {
+	thisBest := getWPM(GetMyPlayer(), c.TIMER)
+	if thisBest > lastBest {
+		lastBest = thisBest
+	}
+}
 
 func GameRun(str string) {
 	if timerDone {
@@ -37,7 +45,6 @@ func registerKey(char rune) {
 	if RunGame {
 		newKeyWidgetStr := []KeyWidget{}
 		myPlayer := GetMyPlayer()
-		myPlayer.KeysPressed++
 		for currentIndex, currentChar := range keyWidgetStr {
 			if currentIndex == myPlayer.KeysPressed {
 				if currentChar.text == char {
@@ -50,6 +57,7 @@ func registerKey(char rune) {
 				newKeyWidgetStr = append(newKeyWidgetStr, currentChar)
 			}
 		}
+		myPlayer.KeysPressed++
 		keyWidgetStr = newKeyWidgetStr
 		Players[comms.ID] = myPlayer
 	}
@@ -57,7 +65,7 @@ func registerKey(char rune) {
 
 func resetStats() {
 	for name, player := range Players {
-		Players[name] = MakePlayer(player.Name, 0, 0)
+		Players[name] = MakePlayer(player.Name, 0, 0, false)
 	}
 }
 
@@ -80,31 +88,30 @@ func getWinner() string {
 func getSpriteWidgets(playerStats map[string]PlayerInfo) []giu.Widget {
 	layouts := []giu.Widget{}
 	keys := c.SortStrKeys(playerStats)
+	percent := getFitSize(len(keys))
 	for _, key := range keys {
 		player := playerStats[key]
-		layouts = append(layouts, giu.Style().SetFontSize(20).To(giu.Row(
+		layouts = append(layouts, giu.Style().SetFontSize(17*percent).To(giu.Row(
 			giu.Label(getDistance(player)),
-			giu.Label("\n"+player.Name),
-			giu.ImageWithFile(getImage(player)))))
+			giu.ImageWithFile(getImage(player)).Size(75*percent, 50*percent),
+			giu.Label("\n"+player.Name))))
 	}
 	return layouts
+}
+
+func getFitSize(playerCount int) float32 {
+	if playerCount < 6 {
+		return 1
+	} else {
+		return 6 / float32(playerCount)
+	}
 }
 
 func getGameWidgets(w []KeyWidget) []giu.Widget {
 	layouts := []giu.Widget{}
 	if int(time.Until(timer).Seconds()) > 0 {
-		widgetLocX := 0
-		widgetLocY := 0
-		for _, key := range w {
-			if widgetLocX/(c.WIDTH-40) != 0 {
-				widgetLocY++
-				widgetLocX = 0
-			}
-			keyWidget := KeyWidget{widgetLocX, widgetLocY, key.text, key.color}
-			layouts = append(layouts, giu.Style().SetFontSize(30).To(&keyWidget))
-			widgetLocX += keys[key.text].size
-		}
 		tick := int(time.Until(timer).Seconds())
+		layouts = append(layouts, getKeyWidgets(w)...)
 		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{tick, c.WIDTH - 40, c.HEIGHT - 40}))
 		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{getWPM(GetMyPlayer(), c.TIMER-tick), 8, c.HEIGHT - 40}))
 		layouts = append(layouts, getSpriteWidgets(Players)...)
@@ -113,6 +120,29 @@ func getGameWidgets(w []KeyWidget) []giu.Widget {
 		RunGame = false
 	}
 
+	return layouts
+}
+
+func getBestWidget() []giu.Widget {
+	layouts := []giu.Widget{}
+	updateBest()
+	layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{lastBest, 8, c.HEIGHT - 40}))
+	return layouts
+}
+
+func getKeyWidgets(w []KeyWidget) []giu.Widget {
+	layouts := []giu.Widget{}
+	widgetLocX := 0
+	widgetLocY := 0
+	for _, key := range w {
+		if widgetLocX/(c.WIDTH-40) != 0 {
+			widgetLocY++
+			widgetLocX = 0
+		}
+		keyWidget := KeyWidget{widgetLocX, widgetLocY, key.text, key.color}
+		layouts = append(layouts, giu.Style().SetFontSize(30).To(&keyWidget))
+		widgetLocX += keys[key.text].size
+	}
 	return layouts
 }
 
@@ -158,4 +188,10 @@ func getDistance(player PlayerInfo) string {
 		space += " "
 	}
 	return space
+}
+
+func RemovePlayers() {
+	for _, id := range comms.DisconnectedPlayers() {
+		delete(Players, id)
+	}
 }

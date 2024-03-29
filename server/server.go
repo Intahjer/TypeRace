@@ -15,12 +15,7 @@ import (
 var playerSpace = 5
 var LOCAL_MODE = ""
 var test = "Jerin is a guy that made this. This string is to test the wpm accurancy which as of now should be sixty or so since these are easy words."
-var clientStatus = make(map[net.Conn]ClientData)
-
-type ClientData struct {
-	id      string
-	playing bool
-}
+var clients = make(map[net.Conn]string)
 
 func main() {
 	game.NAME = "Host"
@@ -47,8 +42,8 @@ func handleConnection(conn net.Conn) {
 }
 
 func clientsPlaying() bool {
-	for _, data := range clientStatus {
-		if data.playing {
+	for _, data := range game.Players {
+		if data.Playing {
 			return true
 		}
 	}
@@ -56,10 +51,10 @@ func clientsPlaying() bool {
 }
 
 func writeToClients(messages []string) {
-	for conn := range clientStatus {
+	for conn := range clients {
 		_, err := comms.Write(conn, messages...)
 		if err != nil {
-			delete(clientStatus, conn)
+			delete(clients, conn)
 		}
 	}
 }
@@ -72,9 +67,9 @@ func handleMessage(message string, conn net.Conn) {
 			comms.Write(conn, comms.SC_DISCONNECT)
 			return
 		}
-		_, exists := clientStatus[conn]
+		_, exists := clients[conn]
 		if !exists {
-			clientStatus[conn] = ClientData{command[1], false}
+			clients[conn] = command[1]
 		}
 
 		updatePlayer(command[2], conn)
@@ -83,24 +78,24 @@ func handleMessage(message string, conn net.Conn) {
 }
 
 func sendStatusAll() {
+	for id, player := range game.Players {
+		status := []string{comms.SC_PLAYER, id, player.WritePlayer()}
+		writeToClients(status)
+	}
+}
+
+func commsTick() {
 	for {
-		for id, player := range game.Players {
-			status := []string{comms.SC_PLAYER, id, player.WritePlayer()}
-			writeToClients(status)
-		}
+		sendStatusAll()
+		game.RemovePlayers()
 		comms.Tick()
 	}
 }
 
 func updatePlayer(update string, conn net.Conn) {
-	playerId := clientStatus[conn].id
+	playerId := clients[conn]
+	comms.UpdatePlayer(playerId)
 	playerUpdate := game.ReadPlayer(update)
-	playerStored := game.Players[playerId]
-	if playerUpdate.KeysPressed > playerStored.KeysPressed {
-		clientStatus[conn] = ClientData{playerId, true}
-	} else {
-		clientStatus[conn] = ClientData{playerId, false}
-	}
 	game.Players[playerId] = playerUpdate
 }
 
@@ -116,6 +111,7 @@ func mainLoop() {
 		game.EnterInput(start)
 		game.DisplayWinner()
 		game.DisplayPlayers()
+		game.DisplayBest()
 	}
 }
 
@@ -130,7 +126,7 @@ func connect() {
 	if comms.ADDR != LOCAL_MODE {
 		listener, _ := net.Listen("tcp", comms.ADDR)
 		go connectionLoop(listener)
-		go sendStatusAll()
+		go commsTick()
 	}
 	game.MakeMyPlayer()
 }

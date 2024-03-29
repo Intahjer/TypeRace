@@ -17,6 +17,7 @@ var COUNTDOWN = 4
 var WNAME = "Typing Game"
 var WIDTH = 1280
 var HEIGHT = 640
+var MAX_CHAR = 10
 
 func SortStrKeys[T any](m map[string]T) []string {
 	keys := make([]string, 0, len(m))
@@ -29,9 +30,11 @@ func SortStrKeys[T any](m map[string]T) []string {
 
 func SimpleName(str string) string {
 	corrLett := []rune{}
-	for _, lett := range str {
-		if (lett > 64 && lett < 91) || (lett > 96 && lett < 123) {
-			corrLett = append(corrLett, lett)
+	for idx, lett := range str {
+		if idx <= MAX_CHAR-1 {
+			if (lett > 64 && lett < 91) || (lett > 96 && lett < 123) {
+				corrLett = append(corrLett, lett)
+			}
 		}
 	}
 	simpleName := string(corrLett)

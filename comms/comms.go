@@ -19,6 +19,7 @@ var EOF = "\n"
 var ADDR = ":8787"
 var ID = uuid.NewString()
 var tick = 1 * time.Second
+var playerTick = make(map[string]time.Time)
 
 func Write(conn net.Conn, commands ...string) (int, error) {
 	str := ""
@@ -35,4 +36,19 @@ func SetAddr() []giu.Widget {
 
 func Tick() {
 	time.Sleep(tick)
+}
+
+func UpdatePlayer(id string) {
+	playerTick[id] = time.Now()
+}
+
+func DisconnectedPlayers() []string {
+	forgetThese := []string{}
+	for id, last := range playerTick {
+		if (last.Add(tick * 2)).Before(time.Now()) {
+			forgetThese = append(forgetThese, id)
+			delete(playerTick, id)
+		}
+	}
+	return forgetThese
 }
