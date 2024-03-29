@@ -34,23 +34,25 @@ func GameRun(str string) {
 	giu.Update()
 }
 func registerKey(char rune) {
-	newKeyWidgetStr := []KeyWidget{}
-	myPlayer := GetMyPlayer()
-	myPlayer.KeysPressed++
-	for currentIndex, currentChar := range keyWidgetStr {
-		if currentIndex == myPlayer.KeysPressed {
-			if currentChar.text == char {
-				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, c.WHITE})
-				myPlayer.KeysCorrect++
+	if RunGame {
+		newKeyWidgetStr := []KeyWidget{}
+		myPlayer := GetMyPlayer()
+		myPlayer.KeysPressed++
+		for currentIndex, currentChar := range keyWidgetStr {
+			if currentIndex == myPlayer.KeysPressed {
+				if currentChar.text == char {
+					newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, c.WHITE})
+					myPlayer.KeysCorrect++
+				} else {
+					newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, c.RED})
+				}
 			} else {
-				newKeyWidgetStr = append(newKeyWidgetStr, KeyWidget{currentChar.x, currentChar.y, char, c.RED})
+				newKeyWidgetStr = append(newKeyWidgetStr, currentChar)
 			}
-		} else {
-			newKeyWidgetStr = append(newKeyWidgetStr, currentChar)
 		}
+		keyWidgetStr = newKeyWidgetStr
+		Players[comms.ID] = myPlayer
 	}
-	keyWidgetStr = newKeyWidgetStr
-	Players[comms.ID] = myPlayer
 }
 
 func resetStats() {
