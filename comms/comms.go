@@ -3,6 +3,7 @@ package comms
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/AllenDang/giu"
@@ -17,9 +18,9 @@ var CC_UPDATE = "cc01"
 var SPLIT = ":"
 var EOF = "\n"
 var ADDR = ":8787"
-var ID = uuid.NewString()
+var Id = uuid.NewString()
 var tick = 1 * time.Second
-var playerTick = make(map[string]time.Time)
+var playerTick = sync.Map{}
 
 func Write(conn net.Conn, commands ...string) (int, error) {
 	str := ""
@@ -39,16 +40,17 @@ func Tick() {
 }
 
 func UpdatePlayer(id string) {
-	playerTick[id] = time.Now()
+	playerTick.Store(id, time.Now())
 }
 
 func DisconnectedPlayers() []string {
 	forgetThese := []string{}
-	for id, last := range playerTick {
-		if (last.Add(tick * 2)).Before(time.Now()) {
-			forgetThese = append(forgetThese, id)
-			delete(playerTick, id)
+	playerTick.Range(func(id, last interface{}) bool {
+		if (last.(time.Time).Add(tick * 2)).Before(time.Now()) {
+			forgetThese = append(forgetThese, id.(string))
+			playerTick.Delete(id)
 		}
-	}
+		return true
+	})
 	return forgetThese
 }

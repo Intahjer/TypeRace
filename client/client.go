@@ -32,11 +32,9 @@ func readConnection(conn net.Conn) {
 				command := strings.Split(text, comms.SPLIT)
 				switch command[0] {
 				case comms.SC_PLAYER:
-					if comms.ID != command[1] {
+					if comms.Id != command[1] {
 						comms.UpdatePlayer(command[1])
-						c.M.Lock()
-						game.Players[command[1]] = game.ReadPlayer(command[2])
-						c.M.Unlock()
+						game.Players.Store(command[1], game.ReadPlayer(command[2]))
 					}
 				case comms.SC_START:
 					gameString = command[1]
@@ -57,7 +55,7 @@ func commsTick(conn net.Conn) {
 
 func sendStatus(conn net.Conn) {
 	myPlayer := game.GetMyPlayer()
-	comms.Write(conn, comms.CC_UPDATE, comms.ID, myPlayer.WritePlayer())
+	comms.Write(conn, comms.CC_UPDATE, comms.Id, myPlayer.WritePlayer())
 }
 
 func mainLoop() {

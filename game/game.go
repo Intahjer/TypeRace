@@ -2,6 +2,8 @@ package game
 
 import (
 	"fmt"
+	"sort"
+	"sync"
 	"time"
 
 	"TypeRace/comms"
@@ -13,7 +15,7 @@ import (
 var NAME string
 var keyWidgetStr []KeyWidget
 var timer time.Time
-var Players = make(map[string]PlayerInfo)
+var Players = sync.Map{}
 var timerDone = true
 var RunGame = false
 var countDown = time.Now()
@@ -59,18 +61,14 @@ func registerKey(char rune) {
 		}
 		myPlayer.KeysPressed++
 		keyWidgetStr = newKeyWidgetStr
-		c.M.Lock()
-		Players[comms.ID] = myPlayer
-		c.M.Unlock()
+		Players.Store(comms.Id, myPlayer)
 	}
 }
 
 func resetStats() {
-	for name, player := range Players {
-		c.M.Lock()
-		Players[name] = MakePlayer(player.Name, 0, 0, false)
-		c.M.Unlock()
-	}
+	LoopPlayers(func(id string, player PlayerInfo) {
+		Players.Store(id, MakePlayer(player.Name, 0, 0, false))
+	})
 }
 
 func resetTimer() {
@@ -80,21 +78,23 @@ func resetTimer() {
 }
 
 func getWinner() string {
-	winner := comms.ID
-	for id, player := range Players {
-		if getWPM(player, c.TIMER) > getWPM(Players[winner], c.TIMER) {
+	winner := comms.Id
+	LoopPlayers(func(id string, player PlayerInfo) {
+		if getWPM(player, c.TIMER) > getWPM(GetPlayer(winner), c.TIMER) {
 			winner = id
 		}
-	}
-	return Players[winner].Name
+	})
+	return GetPlayer(winner).Name
 }
 
-func getSpriteWidgets(playerStats map[string]PlayerInfo) []giu.Widget {
+func getSpriteWidgets() []giu.Widget {
 	layouts := []giu.Widget{}
-	keys := c.SortStrKeys(playerStats)
+	keys := []string{}
+	LoopPlayers(func(name string, _ PlayerInfo) { keys = append(keys, name) })
+	sort.Strings(keys)
 	percent := getFitSize(len(keys))
 	for _, key := range keys {
-		player := playerStats[key]
+		player := GetPlayer(key)
 		layouts = append(layouts, giu.Style().SetFontSize(17*percent).To(giu.Row(
 			giu.Label(getDistance(player)),
 			giu.ImageWithFile(getImage(player)).Size(75*percent, 50*percent),
@@ -118,7 +118,7 @@ func getGameWidgets(w []KeyWidget) []giu.Widget {
 		layouts = append(layouts, getKeyWidgets(w)...)
 		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{tick, c.WIDTH - 40, c.HEIGHT - 40}))
 		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{getWPM(GetMyPlayer(), c.TIMER-tick), 8, c.HEIGHT - 40}))
-		layouts = append(layouts, getSpriteWidgets(Players)...)
+		layouts = append(layouts, getSpriteWidgets()...)
 	} else {
 		timerDone = true
 		RunGame = false
@@ -196,17 +196,15 @@ func getDistance(player PlayerInfo) string {
 
 func RemovePlayers() {
 	for _, id := range comms.DisconnectedPlayers() {
-		c.M.Lock()
-		delete(Players, id)
-		c.M.Unlock()
+		Players.Delete(id)
 	}
 }
 
 func ClientsPlaying() bool {
-	for _, data := range Players {
-		if data.Playing {
-			return true
-		}
-	}
-	return false
+	arePlaying := false
+	Players.Range(func(_, data interface{}) bool {
+		arePlaying = data.(PlayerInfo).Playing
+		return !arePlaying
+	})
+	return arePlaying
 }

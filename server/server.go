@@ -72,11 +72,11 @@ func handleMessage(message string, conn net.Conn) {
 
 func sendStatusAll() {
 	wait := game.ClientsPlaying()
-	for id, player := range game.Players {
+	game.LoopPlayers(func(id string, player game.PlayerInfo) {
 		playerWithStatus := game.MakePlayer(player.Name, player.KeysCorrect, player.KeysPressed, wait)
 		status := []string{comms.SC_PLAYER, id, playerWithStatus.WritePlayer()}
 		writeToClients(status)
-	}
+	})
 }
 
 func commsTick() {
@@ -91,9 +91,7 @@ func updatePlayer(update string, conn net.Conn) {
 	playerId := clients[conn]
 	comms.UpdatePlayer(playerId)
 	playerUpdate := game.ReadPlayer(update)
-	c.M.Lock()
-	game.Players[playerId] = playerUpdate
-	c.M.Unlock()
+	game.Players.Store(playerId, playerUpdate)
 }
 
 func mainLoop() {

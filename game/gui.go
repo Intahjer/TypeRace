@@ -3,6 +3,7 @@ package game
 import (
 	c "TypeRace/constants"
 	"TypeRace/stringgen"
+	"sort"
 	"strconv"
 
 	"github.com/AllenDang/giu"
@@ -13,9 +14,11 @@ func DisplayWinner() {
 }
 
 func DisplayPlayers() {
-	keys := c.SortStrKeys(Players)
+	keys := []string{}
+	LoopPlayers(func(name string, _ PlayerInfo) { keys = append(keys, name) })
+	sort.Strings(keys)
 	for _, key := range keys {
-		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(Players[key].Name + " : " + strconv.Itoa(getWPM(Players[key], c.TIMER)))))
+		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(GetPlayer(key).Name + " : " + strconv.Itoa(getWPM(GetPlayer(key), c.TIMER)))))
 	}
 }
 

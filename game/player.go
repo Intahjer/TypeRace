@@ -20,7 +20,7 @@ func MakePlayer(name string, keysCorrect int, keysPressed int, playing bool) Pla
 }
 
 func GetMyPlayer() PlayerInfo {
-	return Players[comms.ID]
+	return GetPlayer(comms.Id)
 }
 
 func (p *PlayerInfo) WritePlayer() string {
@@ -36,7 +36,17 @@ func ReadPlayer(str string) PlayerInfo {
 }
 
 func MakeMyPlayer() {
-	c.M.Lock()
-	Players[comms.ID] = MakePlayer(NAME, 0, 0, RunGame)
-	c.M.Unlock()
+	Players.Store(comms.Id, MakePlayer(NAME, 0, 0, RunGame))
+}
+
+func LoopPlayers(pLoop func(name string, player PlayerInfo)) {
+	Players.Range(func(k, v interface{}) bool {
+		pLoop(k.(string), v.(PlayerInfo))
+		return true
+	})
+}
+
+func GetPlayer(k string) PlayerInfo {
+	val, _ := Players.Load(k)
+	return val.(PlayerInfo)
 }
