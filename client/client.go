@@ -13,8 +13,6 @@ import (
 	"github.com/AllenDang/giu"
 )
 
-var gameString string
-
 func main() {
 	game.NAME = "Client"
 	game.GameLoop(mainLoop)

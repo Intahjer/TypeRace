@@ -1,7 +1,6 @@
 package comms
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -27,7 +26,6 @@ func Write(conn net.Conn, commands ...string) (int, error) {
 	for _, command := range commands {
 		str = str + command + SPLIT
 	}
-	fmt.Println(str)
 	return conn.Write([]byte(str + EOF))
 }
 

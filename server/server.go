@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"strings"
 
@@ -14,9 +13,7 @@ import (
 	"github.com/AllenDang/giu"
 )
 
-var playerSpace = 5
 var LOCAL_MODE = ""
-var str string
 var clients = make(map[net.Conn]string)
 var difficulty = stringgen.Easy
 
@@ -51,14 +48,9 @@ func writeToClients(messages []string) {
 }
 
 func handleMessage(message string, conn net.Conn) {
-	fmt.Println(message)
 	command := strings.Split(message, comms.SPLIT)
 	switch command[0] {
 	case comms.CC_UPDATE:
-		if playerSpace <= 0 {
-			comms.Write(conn, comms.SC_DISCONNECT)
-			return
-		}
 		_, exists := clients[conn]
 		if !exists {
 			clients[conn] = command[1]
@@ -109,7 +101,7 @@ func mainLoop() {
 }
 
 func start() {
-	str = stringgen.GetString(difficulty)
+	str := stringgen.GetString(difficulty)
 	if comms.ADDR != LOCAL_MODE {
 		writeToClients([]string{comms.SC_START, str})
 	}
