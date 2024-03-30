@@ -28,7 +28,7 @@ func (w *KeyWidget) Build() {
 	buildStr := string(w.text)
 	if w.text == ' ' {
 		buildStr = "."
-		pos = pos.Add(image.Pt(0, -6))
+		pos = pos.Add(image.Pt(4, -6))
 	}
 	canvas.AddText(pos, w.color, buildStr)
 }

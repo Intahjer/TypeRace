@@ -16,7 +16,6 @@ var NAME string
 var keyWidgetStr []KeyWidget
 var timer time.Time
 var Players = sync.Map{}
-var timerDone = true
 var RunGame = false
 var countDown = time.Now()
 var StartScreen = true
@@ -78,7 +77,6 @@ func resetStats() {
 func resetTimer() {
 	timer = time.Now().Add(time.Duration(c.TIMER+c.COUNTDOWN) * time.Second)
 	countDown = time.Now().Add(time.Duration(c.COUNTDOWN) * time.Second)
-	timerDone = false
 }
 
 func getWinner() string {
@@ -124,7 +122,6 @@ func getGameWidgets(w []KeyWidget) []giu.Widget {
 		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{getWPM(GetMyPlayer(), c.TIMER-tick), 8, c.HEIGHT - 40}))
 		layouts = append(layouts, getSpriteWidgets()...)
 	} else {
-		timerDone = true
 		RunGame = false
 	}
 

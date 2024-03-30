@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+var split = ">"
+
 type PlayerInfo struct {
 	Name        string
 	KeysCorrect int
@@ -24,11 +26,11 @@ func GetMyPlayer() PlayerInfo {
 }
 
 func (p *PlayerInfo) WritePlayer() string {
-	return p.Name + ">" + strconv.Itoa(p.KeysCorrect) + ">" + strconv.Itoa(p.KeysPressed) + ">" + strconv.FormatBool(RunGame)
+	return p.Name + split + strconv.Itoa(p.KeysCorrect) + split + strconv.Itoa(p.KeysPressed) + split + strconv.FormatBool(RunGame)
 }
 
 func ReadPlayer(str string) PlayerInfo {
-	playerData := strings.Split(str, ">")
+	playerData := strings.Split(str, split)
 	arg1, _ := strconv.Atoi(playerData[1])
 	arg2, _ := strconv.Atoi(playerData[2])
 	arg3, _ := strconv.ParseBool(playerData[3])

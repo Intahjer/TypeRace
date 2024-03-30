@@ -17,20 +17,28 @@ var test = "HAHAHAHAHA:12 3515643526:[]./.HAHAH DASDA SFDA ASFK ASJFAS LKFJAS FA
 var STRING_LIMIT = 300
 
 func GetString(difficulty Difficulty) string {
-	str := SimplifyString(test, STRING_LIMIT)
-	if difficulty == Medium {
-		str = medString(str)
-	} else if difficulty == Hard {
-		str = hardString(str)
-	} else if difficulty == Super {
-		str = superString(str)
+	str := SimplifyString(generateStr(), STRING_LIMIT)
+	switch difficulty {
+	case Easy:
+		return easyString(str)
+	case Medium:
+		return medString(str)
+	case Hard:
+		return hardString(str)
+	case Super:
+		return superString(str)
+	default:
+		return str
 	}
-	return str
+}
+
+func generateStr() string {
+	return test
 }
 
 func superString(str string) string {
 	lastChar := ' '
-	upper := []rune{}
+	super := []rune{}
 	for _, char := range str {
 		newChar := char
 		if isSpace(lastChar) && isLowerLetter(newChar) {
@@ -41,26 +49,26 @@ func superString(str string) string {
 		} else if isSpace(newChar) {
 			shouldAdd := rand.Intn(5)
 			if shouldAdd == 0 {
-				upper = append(upper, rune(rand.Intn(11)+48))
+				super = append(super, rune(rand.Intn(11)+48))
 			} else if shouldAdd == 1 {
-				upper = append(upper, rune(rand.Intn(15)+33))
+				super = append(super, rune(rand.Intn(15)+33))
 			} else if shouldAdd == 2 {
-				upper = append(upper, rune(rand.Intn(9)+58))
+				super = append(super, rune(rand.Intn(9)+58))
 			} else if shouldAdd == 3 {
-				upper = append(upper, rune(rand.Intn(6)+91))
+				super = append(super, rune(rand.Intn(6)+91))
 			} else if shouldAdd == 4 {
-				upper = append(upper, rune(rand.Intn(4)+123))
+				super = append(super, rune(rand.Intn(4)+123))
 			}
 		}
-		upper = append(upper, newChar)
+		super = append(super, newChar)
 		lastChar = newChar
 	}
-	return string(upper)
+	return string(super)
 }
 
 func hardString(str string) string {
 	lastChar := ' '
-	upper := []rune{}
+	hard := []rune{}
 	for _, char := range str {
 		newChar := char
 		if isSpace(lastChar) && isLowerLetter(newChar) {
@@ -71,22 +79,22 @@ func hardString(str string) string {
 		} else if isSpace(newChar) {
 			shouldAdd := rand.Intn(5)
 			if shouldAdd == 2 {
-				upper = append(upper, rune(rand.Intn(9)+58))
+				hard = append(hard, rune(rand.Intn(8)+58))
 			} else if shouldAdd == 3 {
-				upper = append(upper, rune(rand.Intn(6)+91))
+				hard = append(hard, rune(rand.Intn(6)+91))
 			} else if shouldAdd == 4 {
-				upper = append(upper, rune(rand.Intn(4)+123))
+				hard = append(hard, rune(rand.Intn(4)+123))
 			}
 		}
-		upper = append(upper, newChar)
+		hard = append(hard, newChar)
 		lastChar = newChar
 	}
-	return string(upper)
+	return string(hard)
 }
 
 func medString(str string) string {
 	lastChar := ' '
-	upper := []rune{}
+	med := []rune{}
 	for _, char := range str {
 		newChar := char
 		if isSpace(lastChar) && isLowerLetter(newChar) {
@@ -97,30 +105,40 @@ func medString(str string) string {
 		} else if isSpace(newChar) {
 			shouldAdd := rand.Intn(5)
 			if shouldAdd == 0 {
-				upper = append(upper, '.')
+				med = append(med, '.')
 			} else if shouldAdd == 1 {
-				upper = append(upper, ';')
+				med = append(med, ';')
 			} else if shouldAdd == 2 {
-				upper = append(upper, ':')
+				med = append(med, ':')
 			} else if shouldAdd == 3 {
-				upper = append(upper, ',')
+				med = append(med, ',')
 			}
 		}
-		upper = append(upper, newChar)
+		med = append(med, newChar)
 		lastChar = newChar
 	}
-	return string(upper)
+	return string(med)
+}
+
+func easyString(str string) string {
+	easy := []rune{}
+	for _, char := range str {
+		newChar := char
+		if isUpperLeter(char) {
+			newChar = shiftToLower(char)
+		}
+		easy = append(easy, newChar)
+	}
+	return string(easy)
 }
 
 func SimplifyString(str string, limit int) string {
 	simplified := []rune{}
-	localLimit := STRING_LIMIT
+	localLimit := limit
 	for i, a := range str {
 		if i < localLimit {
-			if isLowerLetter(a) || isSpace(a) {
+			if isLowerLetter(a) || isSpace(a) || isUpperLeter(a) {
 				simplified = append(simplified, a)
-			} else if isUpperLeter(a) {
-				simplified = append(simplified, shiftToLower(a))
 			} else {
 				localLimit++
 			}
