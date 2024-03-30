@@ -37,8 +37,7 @@ func readConnection(conn net.Conn) {
 						game.Players.Store(command[1], game.ReadPlayer(command[2]))
 					}
 				case comms.SC_START:
-					gameString = command[1]
-					game.RunGame = true
+					game.StartGame(command[1])
 				}
 			}
 		}
@@ -62,7 +61,7 @@ func mainLoop() {
 	if game.StartScreen {
 		game.DisplayStartScreen(connect)
 	} else if game.RunGame {
-		game.GameRun(gameString)
+		game.GameRun()
 	} else if game.ClientsPlaying() {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for other players to finish...")))
 	} else {

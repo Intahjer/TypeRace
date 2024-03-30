@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"strings"
 
@@ -45,14 +46,12 @@ func handleConnection(conn net.Conn) {
 
 func writeToClients(messages []string) {
 	for conn := range clients {
-		_, err := comms.Write(conn, messages...)
-		if err != nil {
-			delete(clients, conn)
-		}
+		comms.Write(conn, messages...)
 	}
 }
 
 func handleMessage(message string, conn net.Conn) {
+	fmt.Println(message)
 	command := strings.Split(message, comms.SPLIT)
 	switch command[0] {
 	case comms.CC_UPDATE:
@@ -71,10 +70,8 @@ func handleMessage(message string, conn net.Conn) {
 }
 
 func sendStatusAll() {
-	wait := game.ClientsPlaying()
 	game.LoopPlayers(func(id string, player game.PlayerInfo) {
-		playerWithStatus := game.MakePlayer(player.Name, player.KeysCorrect, player.KeysPressed, wait)
-		status := []string{comms.SC_PLAYER, id, playerWithStatus.WritePlayer()}
+		status := []string{comms.SC_PLAYER, id, player.WritePlayer()}
 		writeToClients(status)
 	})
 }
@@ -98,7 +95,7 @@ func mainLoop() {
 	if game.StartScreen {
 		game.DisplayStartScreen(connect)
 	} else if game.RunGame {
-		game.GameRun(str)
+		game.GameRun()
 	} else if game.ClientsPlaying() {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for other players to finish...")))
 	} else {
@@ -116,7 +113,7 @@ func start() {
 	if comms.ADDR != LOCAL_MODE {
 		writeToClients([]string{comms.SC_START, str})
 	}
-	game.RunGame = true
+	game.StartGame(str)
 }
 
 func connect() {

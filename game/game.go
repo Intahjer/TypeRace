@@ -31,18 +31,15 @@ func updateBest() {
 	}
 }
 
-func GameRun(str string) {
-	if timerDone {
-		resetStats()
-		resetTimer()
-		keyWidgetStr = createKeyWidget(str)
-	} else if !time.Now().After(countDown) {
+func GameRun() {
+	if !time.Now().After(countDown) {
 		displayCountdown()
 	} else {
 		displayGame()
 	}
 	giu.Update()
 }
+
 func registerKey(char rune) {
 	if RunGame {
 		newKeyWidgetStr := []KeyWidget{}
@@ -63,6 +60,13 @@ func registerKey(char rune) {
 		keyWidgetStr = newKeyWidgetStr
 		Players.Store(comms.Id, myPlayer)
 	}
+}
+
+func StartGame(str string) {
+	resetStats()
+	resetTimer()
+	keyWidgetStr = createKeyWidget(str)
+	RunGame = true
 }
 
 func resetStats() {
