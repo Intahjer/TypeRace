@@ -2,7 +2,7 @@ package game
 
 import (
 	"TypeRace/comms"
-	c "TypeRace/constants"
+	"TypeRace/stringgen"
 	"strconv"
 	"strings"
 )
@@ -15,7 +15,7 @@ type PlayerInfo struct {
 }
 
 func MakePlayer(name string, keysCorrect int, keysPressed int, playing bool) PlayerInfo {
-	return PlayerInfo{c.SimpleName(name), keysCorrect, keysPressed, playing}
+	return PlayerInfo{stringgen.SimpleName(name), keysCorrect, keysPressed, playing}
 }
 
 func GetMyPlayer() PlayerInfo {

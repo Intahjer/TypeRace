@@ -27,19 +27,3 @@ func SortStrKeys[T any](m map[string]T) []string {
 	sort.Strings(keys)
 	return keys
 }
-
-func SimpleName(str string) string {
-	corrLett := []rune{}
-	for idx, lett := range str {
-		if idx <= MAX_CHAR-1 {
-			if (lett > 64 && lett < 91) || (lett > 96 && lett < 123) {
-				corrLett = append(corrLett, lett)
-			}
-		}
-	}
-	simpleName := string(corrLett)
-	if simpleName == "" {
-		return DEFAULT_NAME
-	}
-	return simpleName
-}

@@ -8,6 +8,7 @@ import (
 	"TypeRace/comms"
 	c "TypeRace/constants"
 	"TypeRace/game"
+	"TypeRace/stringgen"
 
 	"github.com/AllenDang/giu"
 )
@@ -103,7 +104,7 @@ func mainLoop() {
 	if game.StartScreen {
 		game.DisplayStartScreen(connect)
 	} else if game.RunGame {
-		game.GameRun(test)
+		game.GameRun(stringgen.GetString(stringgen.Easy))
 	} else if clientsPlaying() {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for other players to finish...")))
 	} else {
