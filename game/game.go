@@ -59,13 +59,17 @@ func registerKey(char rune) {
 		}
 		myPlayer.KeysPressed++
 		keyWidgetStr = newKeyWidgetStr
+		c.M.Lock()
 		Players[comms.ID] = myPlayer
+		c.M.Unlock()
 	}
 }
 
 func resetStats() {
 	for name, player := range Players {
+		c.M.Lock()
 		Players[name] = MakePlayer(player.Name, 0, 0, false)
+		c.M.Unlock()
 	}
 }
 
@@ -192,6 +196,17 @@ func getDistance(player PlayerInfo) string {
 
 func RemovePlayers() {
 	for _, id := range comms.DisconnectedPlayers() {
+		c.M.Lock()
 		delete(Players, id)
+		c.M.Unlock()
 	}
+}
+
+func ClientsPlaying() bool {
+	for _, data := range Players {
+		if data.Playing {
+			return true
+		}
+	}
+	return false
 }

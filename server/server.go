@@ -15,8 +15,9 @@ import (
 
 var playerSpace = 5
 var LOCAL_MODE = ""
-var test = "Jerin is a guy that made this. This string is to test the wpm accurancy which as of now should be sixty or so since these are easy words."
+var str string
 var clients = make(map[net.Conn]string)
+var difficulty = stringgen.Easy
 
 func main() {
 	game.NAME = "Host"
@@ -40,15 +41,6 @@ func handleConnection(conn net.Conn) {
 		}
 		handleMessage(scanner.Text(), conn)
 	}
-}
-
-func clientsPlaying() bool {
-	for _, data := range game.Players {
-		if data.Playing {
-			return true
-		}
-	}
-	return false
 }
 
 func writeToClients(messages []string) {
@@ -79,8 +71,10 @@ func handleMessage(message string, conn net.Conn) {
 }
 
 func sendStatusAll() {
+	wait := game.ClientsPlaying()
 	for id, player := range game.Players {
-		status := []string{comms.SC_PLAYER, id, player.WritePlayer()}
+		playerWithStatus := game.MakePlayer(player.Name, player.KeysCorrect, player.KeysPressed, wait)
+		status := []string{comms.SC_PLAYER, id, playerWithStatus.WritePlayer()}
 		writeToClients(status)
 	}
 }
@@ -97,19 +91,22 @@ func updatePlayer(update string, conn net.Conn) {
 	playerId := clients[conn]
 	comms.UpdatePlayer(playerId)
 	playerUpdate := game.ReadPlayer(update)
+	c.M.Lock()
 	game.Players[playerId] = playerUpdate
+	c.M.Unlock()
 }
 
 func mainLoop() {
 	if game.StartScreen {
 		game.DisplayStartScreen(connect)
 	} else if game.RunGame {
-		game.GameRun(stringgen.GetString(stringgen.Easy))
-	} else if clientsPlaying() {
+		game.GameRun(str)
+	} else if game.ClientsPlaying() {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for other players to finish...")))
 	} else {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Press enter to play")))
 		game.EnterInput(start)
+		difficulty = game.DisplayDifficultyOption(difficulty)
 		game.DisplayWinner()
 		game.DisplayPlayers()
 		game.DisplayBest()
@@ -117,8 +114,9 @@ func mainLoop() {
 }
 
 func start() {
+	str = stringgen.GetString(difficulty)
 	if comms.ADDR != LOCAL_MODE {
-		writeToClients([]string{comms.SC_START, test})
+		writeToClients([]string{comms.SC_START, str})
 	}
 	game.RunGame = true
 }

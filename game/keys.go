@@ -63,7 +63,7 @@ func assignKeys() {
 	keys['X'] = Key{giu.KeyX, 16, true}
 	keys['Y'] = Key{giu.KeyY, 15, true}
 	keys['Z'] = Key{giu.KeyZ, 14, true}
-	keys[' '] = Key{giu.KeySpace, 6, false}
+	keys[' '] = Key{giu.KeySpace, 8, false}
 	keys['`'] = Key{giu.KeyGraveAccent, 7, false}
 	keys['1'] = Key{giu.Key1, 14, false}
 	keys['2'] = Key{giu.Key2, 14, false}
@@ -80,10 +80,10 @@ func assignKeys() {
 	keys['['] = Key{giu.KeyLeftBracket, 11, false}
 	keys[']'] = Key{giu.KeyRightBracket, 11, false}
 	keys['\\'] = Key{giu.KeyBackslash, 12, false}
-	keys[';'] = Key{giu.KeySemicolon, 9, false}
+	keys[';'] = Key{giu.KeySemicolon, 11, false}
 	keys['\''] = Key{giu.KeyApostrophe, 7, false}
-	keys[','] = Key{giu.KeyComma, 8, false}
-	keys['.'] = Key{giu.KeyPeriod, 8, false}
+	keys[','] = Key{giu.KeyComma, 10, false}
+	keys['.'] = Key{giu.KeyPeriod, 10, false}
 	keys['/'] = Key{giu.KeySlash, 11, false}
 	keys['~'] = Key{giu.KeyGraveAccent, 12, true}
 	keys['!'] = Key{giu.Key1, 8, true}
@@ -93,7 +93,7 @@ func assignKeys() {
 	keys['%'] = Key{giu.Key5, 21, true}
 	keys['^'] = Key{giu.Key6, 13, true}
 	keys['&'] = Key{giu.Key7, 17, true}
-	keys['*'] = Key{giu.Key8, 12, true}
+	keys['*'] = Key{giu.Key8, 13, true}
 	keys['('] = Key{giu.Key9, 10, true}
 	keys[')'] = Key{giu.Key0, 10, true}
 	keys['_'] = Key{giu.KeyMinus, 11, true}
@@ -101,11 +101,11 @@ func assignKeys() {
 	keys['{'] = Key{giu.KeyLeftBracket, 11, true}
 	keys['}'] = Key{giu.KeyRightBracket, 11, true}
 	keys['|'] = Key{giu.KeyBackslash, 9, true}
-	keys[':'] = Key{giu.KeySemicolon, 9, true}
+	keys[':'] = Key{giu.KeySemicolon, 11, true}
 	keys['"'] = Key{giu.KeyApostrophe, 9, true}
 	keys['<'] = Key{giu.KeyComma, 14, true}
 	keys['>'] = Key{giu.KeyPeriod, 14, true}
-	keys['?'] = Key{giu.KeySlash, 13, true}
+	keys['?'] = Key{giu.KeySlash, 15, true}
 
 }
 

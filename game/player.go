@@ -2,6 +2,7 @@ package game
 
 import (
 	"TypeRace/comms"
+	c "TypeRace/constants"
 	"TypeRace/stringgen"
 	"strconv"
 	"strings"
@@ -15,7 +16,7 @@ type PlayerInfo struct {
 }
 
 func MakePlayer(name string, keysCorrect int, keysPressed int, playing bool) PlayerInfo {
-	return PlayerInfo{stringgen.SimpleName(name), keysCorrect, keysPressed, playing}
+	return PlayerInfo{stringgen.SimplifyString(name, c.MAX_CHAR), keysCorrect, keysPressed, playing}
 }
 
 func GetMyPlayer() PlayerInfo {
@@ -35,5 +36,7 @@ func ReadPlayer(str string) PlayerInfo {
 }
 
 func MakeMyPlayer() {
+	c.M.Lock()
 	Players[comms.ID] = MakePlayer(NAME, 0, 0, RunGame)
+	c.M.Unlock()
 }

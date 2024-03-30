@@ -34,7 +34,9 @@ func readConnection(conn net.Conn) {
 				case comms.SC_PLAYER:
 					if comms.ID != command[1] {
 						comms.UpdatePlayer(command[1])
+						c.M.Lock()
 						game.Players[command[1]] = game.ReadPlayer(command[2])
+						c.M.Unlock()
 					}
 				case comms.SC_START:
 					gameString = command[1]
@@ -63,6 +65,8 @@ func mainLoop() {
 		game.DisplayStartScreen(connect)
 	} else if game.RunGame {
 		game.GameRun(gameString)
+	} else if game.ClientsPlaying() {
+		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for other players to finish...")))
 	} else {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for host...")))
 		game.DisplayWinner()

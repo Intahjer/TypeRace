@@ -2,6 +2,7 @@ package game
 
 import (
 	c "TypeRace/constants"
+	"TypeRace/stringgen"
 	"strconv"
 
 	"github.com/AllenDang/giu"
@@ -25,6 +26,29 @@ func DisplayStartScreen(onEnter func()) {
 		StartScreen = false
 	})
 }
+
+func DisplayDifficultyOption(difficulty stringgen.Difficulty) stringgen.Difficulty {
+	GUI.Layout(giu.Button(string(difficulty)).OnClick(func() {
+		difficulty = changeDifficulty(difficulty)
+	}))
+	return difficulty
+}
+
+func changeDifficulty(difficulty stringgen.Difficulty) stringgen.Difficulty {
+	switch difficulty {
+	case stringgen.Easy:
+		return stringgen.Medium
+	case stringgen.Medium:
+		return stringgen.Hard
+	case stringgen.Hard:
+		return stringgen.Super
+	case stringgen.Super:
+		return stringgen.Easy
+	default:
+		return difficulty
+	}
+}
+
 func displayCountdown() {
 	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(getCountdownWidget())))
 }
