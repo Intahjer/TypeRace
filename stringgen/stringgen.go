@@ -2,6 +2,8 @@ package stringgen
 
 import (
 	"math/rand"
+	"os"
+	"strings"
 )
 
 type Difficulty string
@@ -13,11 +15,11 @@ const (
 	Super  Difficulty = "Super"
 )
 
-var test = "HAHAHAHAHA:12 3515643526:[]./.HAHAH DASDA SFDA ASFK ASJFAS LKFJAS FASLF KAsdjfaskl fjaslkfasjsaFASFSJ AFAfsaflkdja sdklfashfasASJFASFKASFJASLFKJDKLGJ SDKGDJSFg lk;sbdfslkj jfalks;j;alsfjas;fjasflaksjf;lsfjas;flkjasf;lksajfs;lakfjas;lkfjsa;lkf jko joifhjjngfjkngvjskdlnvhuybndnbajksfglhujiaerkhnugjvbnzdsjfkgnbljkasdhglkjbvnsuidjhfhgnjklheqagjndjklafvhnljskdhgbuijsdfhguiaerjhjgjkdhgfjksdlhgfskjhgsldkj"
 var STRING_LIMIT = 300
+var stringDir = "./stringgen/strings/"
 
 func GetString(difficulty Difficulty) string {
-	str := SimplifyString(generateStr(), STRING_LIMIT)
+	str := generateStr()
 	switch difficulty {
 	case Easy:
 		return easyString(str)
@@ -33,7 +35,40 @@ func GetString(difficulty Difficulty) string {
 }
 
 func generateStr() string {
-	return test
+	str := simplifyAll((getText(getFile())))
+	return getWords(str)
+}
+
+func getWords(str string) string {
+	spaceDel := strings.FieldsFunc(str, func(r rune) bool {
+		return r == ' ' || r == '\n'
+	})
+	idx := rand.Intn(len(spaceDel))
+	words := ""
+	for {
+		word := spaceDel[idx]
+		if word != "" {
+			words += word + " "
+			if len(words) > STRING_LIMIT {
+				return words
+			}
+		}
+		idx++
+		if idx == len(spaceDel) {
+			idx = 0
+		}
+	}
+}
+
+func getText(file string) string {
+	bts, _ := os.ReadFile(stringDir + file)
+	return string(bts)
+}
+
+func getFile() string {
+	dirs, _ := os.ReadDir(stringDir)
+	idx := rand.Intn(len(dirs))
+	return dirs[idx].Name()
 }
 
 func superString(str string) string {
@@ -130,6 +165,18 @@ func easyString(str string) string {
 		easy = append(easy, newChar)
 	}
 	return string(easy)
+}
+
+func simplifyAll(str string) string {
+	simplified := []rune{}
+	for _, a := range str {
+		if isLowerLetter(a) || isSpace(a) || isUpperLeter(a) {
+			simplified = append(simplified, a)
+		} else if a == '\n' {
+			simplified = append(simplified, ' ')
+		}
+	}
+	return string(simplified)
 }
 
 func SimplifyString(str string, limit int) string {
