@@ -2,7 +2,12 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/base64"
+	"image"
+	"image/png"
 	"net"
+	"os"
 	"strings"
 
 	"TypeRace/comms"
@@ -19,7 +24,37 @@ var difficulty = stringgen.Easy
 
 func main() {
 	game.NAME = "Host"
+	initImages()
 	game.GameLoop(mainLoop)
+}
+
+func initImages() {
+	locs := []string{
+		"./sprites/Jet1.png",
+		"./sprites/Jet2.png",
+		"./sprites/Jet3.png",
+		"./sprites/Jet4.png",
+		"./sprites/Jet5.png",
+	}
+	for _, loc := range locs {
+		game.Sprites = append(game.Sprites, getImageFromFilePath(loc))
+	}
+}
+
+func getImageFromFilePath(filePath string) image.Image {
+	f, _ := os.Open(filePath)
+	image, _, _ := image.Decode(f)
+	f.Close()
+	return image
+}
+
+func writeSprites(conn net.Conn) {
+	for _, sprite := range game.Sprites {
+		buffer := new(bytes.Buffer)
+		png.Encode(buffer, sprite)
+		strSprites := base64.StdEncoding.EncodeToString(buffer.Bytes())
+		comms.Write(conn, comms.SC_SPRITES, clients[conn], strSprites)
+	}
 }
 
 func connectionLoop(listener net.Listener) {
@@ -54,8 +89,8 @@ func handleMessage(message string, conn net.Conn) {
 		_, exists := clients[conn]
 		if !exists {
 			clients[conn] = command[1]
+			writeSprites(conn)
 		}
-
 		updatePlayer(command[2], conn)
 		return
 	}

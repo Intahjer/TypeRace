@@ -1,8 +1,9 @@
 package game
 
 import (
-	"fmt"
+	"image"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -22,6 +23,7 @@ var StartScreen = true
 var WINDOW = giu.NewMasterWindow(c.WNAME, c.WIDTH, c.HEIGHT, 0)
 var GUI = giu.SingleWindow()
 var lastBest = 0
+var Sprites = []image.Image{}
 
 func updateBest() {
 	thisBest := getWPM(GetMyPlayer(), c.TIMER)
@@ -97,9 +99,10 @@ func getSpriteWidgets() []giu.Widget {
 	percent := getFitSize(len(keys))
 	for _, key := range keys {
 		player := GetPlayer(key)
+		dmg := getDamage(player)
 		layouts = append(layouts, giu.Style().SetFontSize(17*percent).To(giu.Row(
 			giu.Label(getDistance(player)),
-			giu.ImageWithFile(getImage(player)).Size(75*percent, 50*percent),
+			giu.ImageWithRgba(Sprites[dmg]).ID(strconv.Itoa(dmg)).Size(75*percent, 50*percent),
 			giu.Label("\n"+player.Name))))
 	}
 	return layouts
@@ -178,13 +181,12 @@ func getWPM(player PlayerInfo, timeElapsed int) int {
 	}
 }
 
-func getImage(player PlayerInfo) string {
+func getDamage(player PlayerInfo) int {
 	damage := ((100 * (player.KeysCorrect + 1)) / (player.KeysPressed + 1)) / 10
 	if damage < 6 {
 		damage = 6
 	}
-	damage -= 5
-	return "sprites\\Jet" + fmt.Sprint(damage) + ".png"
+	return damage - 6
 }
 
 func getDistance(player PlayerInfo) string {

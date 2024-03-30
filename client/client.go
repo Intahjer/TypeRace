@@ -3,6 +3,10 @@ package main
 import (
 	"TypeRace/game"
 	"bufio"
+	"bytes"
+	"encoding/base64"
+	"image"
+	"image/png"
 	"net"
 	"os"
 	"strings"
@@ -36,10 +40,20 @@ func readConnection(conn net.Conn) {
 					}
 				case comms.SC_START:
 					game.StartGame(command[1])
+				case comms.SC_SPRITES:
+					if comms.Id == command[1] {
+						game.Sprites = append(game.Sprites, readSprite(command[2]))
+					}
 				}
 			}
 		}
 	}
+}
+
+func readSprite(str string) image.Image {
+	bt, _ := base64.StdEncoding.DecodeString(str)
+	image, _ := png.Decode(bytes.NewReader(bt))
+	return image
 }
 
 func commsTick(conn net.Conn) {
