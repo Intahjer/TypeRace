@@ -11,20 +11,16 @@ import (
 	"strings"
 
 	"TypeRace/comms"
-	c "TypeRace/constants"
 	"TypeRace/game"
 	"TypeRace/stringgen"
-
-	"github.com/AllenDang/giu"
 )
 
 var LOCAL_MODE = ""
 var clients = make(map[net.Conn]string)
 var difficulty = stringgen.Easy
-var lastKilledByHost string
 
 func main() {
-	game.NAME = "Host"
+	game.MyName = "Host"
 	initImages()
 	game.GameLoop(mainLoop)
 }
@@ -103,11 +99,6 @@ func sendStatusAll() {
 	game.LoopPlayers(func(id string, player game.PlayerInfo) {
 		status := []string{comms.SC_PLAYER, id, player.WritePlayer()}
 		writeToClients(status)
-		if game.LastKilled != lastKilledByHost {
-			status = []string{comms.SC_DEAD, game.LastKilled}
-			writeToClients(status)
-			lastKilledByHost = game.LastKilled
-		}
 	})
 }
 
@@ -129,18 +120,16 @@ func updatePlayer(update string, conn net.Conn) {
 func mainLoop() {
 	if game.StartScreen {
 		game.DisplayStartScreen(connect)
-	} else if game.RunGame {
+	} else if game.GetMyPlayer().IsPlaying {
 		game.GameRun()
-	} else if game.ClientsPlaying() {
-		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for other players to finish...")))
+	} else if game.PlayersPlaying() {
+		game.DisplayWaitingForOthers()
 	} else {
-		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Press enter to play")))
+		game.DisplayHostScreen()
 		game.EnterInput(start)
 		difficulty = game.DisplayDifficultyOption(difficulty)
 		game.DisplayMissileMode()
-		game.DisplayWinner()
-		game.DisplayPlayers()
-		game.DisplayBest()
+		game.DisplayStats()
 	}
 }
 

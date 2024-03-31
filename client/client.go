@@ -12,13 +12,9 @@ import (
 	"strings"
 
 	"TypeRace/comms"
-	c "TypeRace/constants"
-
-	"github.com/AllenDang/giu"
 )
 
 func main() {
-	game.NAME = "Client"
 	game.GameLoop(mainLoop)
 }
 
@@ -44,8 +40,6 @@ func readConnection(conn net.Conn) {
 					if comms.Id == command[1] {
 						game.Sprites = append(game.Sprites, readSprite(command[2]))
 					}
-				case comms.SC_DEAD:
-					game.LastKilled = command[1]
 				}
 			}
 		}
@@ -74,15 +68,13 @@ func sendStatus(conn net.Conn) {
 func mainLoop() {
 	if game.StartScreen {
 		game.DisplayStartScreen(connect)
-	} else if game.RunGame {
+	} else if game.GetMyPlayer().IsPlaying {
 		game.GameRun()
-	} else if game.ClientsPlaying() {
-		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for other players to finish...")))
+	} else if game.PlayersPlaying() {
+		game.DisplayWaitingForOthers()
 	} else {
-		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for host...")))
-		game.DisplayWinner()
-		game.DisplayPlayers()
-		game.DisplayBest()
+		game.DisplayWaitingForHost()
+		game.DisplayStats()
 	}
 }
 

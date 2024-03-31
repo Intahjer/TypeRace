@@ -3,24 +3,28 @@ package game
 import (
 	c "TypeRace/constants"
 	"TypeRace/stringgen"
-	"sort"
+	"image"
 	"strconv"
 
 	"github.com/AllenDang/giu"
 )
 
-func DisplayWinner() {
+var WINDOW = giu.NewMasterWindow(c.WNAME, c.WIDTH, c.HEIGHT, 0)
+var GUI = giu.SingleWindow()
+var StartScreen = true
+var Sprites = []image.Image{}
+var DEAD_SPRITE = 6
+var MISSILE_SPRITE = 5
+
+func displayWinner() {
 	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(giu.Label(c.CENTER_X + "WINNER : " + getWinner()))))
 }
 
-func DisplayPlayers() {
-	keys := []string{}
-	LoopPlayers(func(name string, _ PlayerInfo) { keys = append(keys, name) })
-	sort.Strings(keys)
-	for _, key := range keys {
-		if key != missleId {
-			GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(GetPlayer(key).Name + " : " + strconv.Itoa(getWpm(GetPlayer(key), c.TIMER)))))
-		}
+func displayPlayers() {
+	ids := SortedIds()
+	for _, id := range ids {
+		player := GetPlayer(id)
+		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(player.Name + " : " + strconv.Itoa(player.getWpm(c.TIMER)))))
 	}
 }
 
@@ -40,19 +44,21 @@ func DisplayDifficultyOption(difficulty stringgen.Difficulty) stringgen.Difficul
 }
 
 func DisplayMissileMode() {
-	GUI.Layout(giu.Button("MissleMode " + strconv.Itoa(missleMode)).OnClick(func() {
-		missleMode = changeMissileMode(missleMode)
+	GUI.Layout(giu.Button(string(MissileMode)).OnClick(func() {
+		MissileMode = changeMissileMode(MissileMode)
 	}))
 }
 
-func changeMissileMode(missileMode int) int {
+func changeMissileMode(missileMode MissileModeEnum) MissileModeEnum {
 	switch missileMode {
-	case 0:
-		return 1
-	case 1:
-		return 2
-	case 2:
-		return 0
+	case ChaseMode:
+		return EliminationMode
+	case EliminationMode:
+		return PvpMode
+	case PvpMode:
+		return NoMode
+	case NoMode:
+		return ChaseMode
 	default:
 		return missileMode
 	}
@@ -76,6 +82,7 @@ func changeDifficulty(difficulty stringgen.Difficulty) stringgen.Difficulty {
 
 func displayCountdown() {
 	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(getCountdownWidget())))
+	giu.Update()
 }
 
 func GameLoop(loop func()) {
@@ -94,15 +101,30 @@ func EnterInput(onEnter func()) {
 	})
 }
 
-func SetName() []giu.Widget {
-	return []giu.Widget{giu.Row(giu.Label("Name : "), giu.InputText(&NAME))}
-}
-
 func displayGame() {
 	updateMissle()
-	GUI.RegisterKeyboardShortcuts(getKeyInputs()...).Layout(getGameWidgets(keyWidgetStr)...)
+	GUI.RegisterKeyboardShortcuts(getKeyInputs()...).Layout(getGameWidgets(keyWidgets)...)
+	giu.Update()
 }
 
-func DisplayBest() {
-	GUI.Layout(getBestWidget()...)
+func displayBest() {
+	GUI.Layout(getBestWidget())
+}
+
+func DisplayStats() {
+	displayWinner()
+	displayPlayers()
+	displayBest()
+}
+
+func DisplayWaitingForHost() {
+	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for host...")))
+}
+
+func DisplayWaitingForOthers() {
+	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for other players to finish...")))
+}
+
+func DisplayHostScreen() {
+	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Press enter to play")))
 }

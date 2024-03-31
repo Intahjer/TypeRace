@@ -15,6 +15,13 @@ type WpmWidget struct {
 	y   int
 }
 
+func (w *WpmWidget) Build() {
+	pos := image.Pt(w.x, w.y)
+	canvas := giu.GetCanvas()
+	buildStr := strconv.Itoa(w.wpm)
+	canvas.AddText(pos, c.WHITE, buildStr)
+}
+
 type KeyWidget struct {
 	x     int
 	y     int
@@ -31,20 +38,4 @@ func (w *KeyWidget) Build() {
 		pos = pos.Add(image.Pt(4, -6))
 	}
 	canvas.AddText(pos, w.color, buildStr)
-}
-
-func (w *WpmWidget) Build() {
-	pos := image.Pt(w.x, w.y)
-	canvas := giu.GetCanvas()
-	buildStr := strconv.Itoa(w.wpm)
-	canvas.AddText(pos, c.WHITE, buildStr)
-}
-
-func createKeyWidget(in string) []KeyWidget {
-	layouts := []KeyWidget{}
-	for _, key := range in {
-		keyWidget := KeyWidget{0, 0, key, c.GRAY}
-		layouts = append(layouts, keyWidget)
-	}
-	return layouts
 }

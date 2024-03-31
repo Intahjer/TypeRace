@@ -17,3 +17,4 @@ var WNAME = "Typing Game"
 var WIDTH = 1280
 var HEIGHT = 640
 var MAX_CHAR = 10
+var MILLIS = 1000.0

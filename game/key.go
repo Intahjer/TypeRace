@@ -1,8 +1,13 @@
 package game
 
-import "github.com/AllenDang/giu"
+import (
+	"TypeRace/comms"
+
+	"github.com/AllenDang/giu"
+)
 
 var keys = make(map[rune]Key)
+var keyWidgets []KeyWidget
 
 type Key struct {
 	key     giu.Key
@@ -117,12 +122,43 @@ func getKeyInputs() []giu.WindowShortcut {
 			rks = append(rks, giu.WindowShortcut{
 				Key:      v.key,
 				Modifier: giu.ModShift,
-				Callback: func() { registerKey(k) }})
+				Callback: func() { updateNewInput(k) }})
 		} else {
 			rks = append(rks, giu.WindowShortcut{
 				Key:      v.key,
-				Callback: func() { registerKey(k) }})
+				Callback: func() { updateNewInput(k) }})
 		}
 	}
 	return rks
+}
+
+func updateNewInput(char rune) {
+	myPlayer := GetMyPlayer()
+	if myPlayer.IsPlaying {
+		if !myPlayer.IsDead {
+			keyWidgets = registerInput(char)
+		} else {
+			keyWidgets = []KeyWidget{}
+		}
+	}
+}
+
+func registerInput(char rune) []KeyWidget {
+	myPlayer := GetMyPlayer()
+	newKeyWidgets := []KeyWidget{}
+	for idx, key := range keyWidgets {
+		if idx == myPlayer.KeysPressed {
+			if key.text == char {
+				newKeyWidgets = append(newKeyWidgets, getCorrectKeyWidget(key))
+				myPlayer = incrKeysCorrect(myPlayer)
+			} else {
+				newKeyWidgets = append(newKeyWidgets, getIncorrectKeyWidget(key, char))
+			}
+		} else {
+			newKeyWidgets = append(newKeyWidgets, key)
+		}
+	}
+	myPlayer = incrKeysPressed(myPlayer)
+	Players.Store(comms.Id, myPlayer)
+	return newKeyWidgets
 }

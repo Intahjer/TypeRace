@@ -14,7 +14,6 @@ var SC_DISCONNECT = "sc02"
 var SC_WINNER = "sc03"
 var SC_PLAYER = "sc04"
 var SC_SPRITES = "sc05"
-var SC_DEAD = "sc06"
 var CC_UPDATE = "cc01"
 var SPLIT = "::"
 var EOF = "\n"
@@ -31,7 +30,7 @@ func Write(conn net.Conn, commands ...string) (int, error) {
 	return conn.Write([]byte(str + EOF))
 }
 
-func SetAddr() []giu.Widget {
+func GetAddrWidget() []giu.Widget {
 	return []giu.Widget{giu.Row(giu.Label("Address : "), giu.InputText(&ADDR))}
 }
 
