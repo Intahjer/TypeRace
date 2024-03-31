@@ -18,7 +18,9 @@ func DisplayPlayers() {
 	LoopPlayers(func(name string, _ PlayerInfo) { keys = append(keys, name) })
 	sort.Strings(keys)
 	for _, key := range keys {
-		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(GetPlayer(key).Name + " : " + strconv.Itoa(getWPM(GetPlayer(key), c.TIMER)))))
+		if key != missleId {
+			GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(GetPlayer(key).Name + " : " + strconv.Itoa(getWpm(GetPlayer(key), c.TIMER)))))
+		}
 	}
 }
 
@@ -35,6 +37,26 @@ func DisplayDifficultyOption(difficulty stringgen.Difficulty) stringgen.Difficul
 		difficulty = changeDifficulty(difficulty)
 	}))
 	return difficulty
+}
+
+func DisplayMissileMode() {
+	GUI.Layout(giu.Button("MissleMode " + strconv.Itoa(missleMode)).OnClick(func() {
+		missleMode = changeMissileMode(missleMode)
+	}))
+}
+
+func changeMissileMode(missileMode int) int {
+	switch missileMode {
+	case 0:
+		return 1
+	case 1:
+		return 2
+	case 2:
+		return 0
+	default:
+		return missileMode
+	}
+
 }
 
 func changeDifficulty(difficulty stringgen.Difficulty) stringgen.Difficulty {
@@ -77,6 +99,7 @@ func SetName() []giu.Widget {
 }
 
 func displayGame() {
+	updateMissle()
 	GUI.RegisterKeyboardShortcuts(getKeyInputs()...).Layout(getGameWidgets(keyWidgetStr)...)
 }
 

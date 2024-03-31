@@ -44,6 +44,8 @@ func readConnection(conn net.Conn) {
 					if comms.Id == command[1] {
 						game.Sprites = append(game.Sprites, readSprite(command[2]))
 					}
+				case comms.SC_DEAD:
+					game.LastKilled = command[1]
 				}
 			}
 		}

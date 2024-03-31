@@ -82,7 +82,7 @@ func superString(str string) string {
 				newChar = shiftToUpper(newChar)
 			}
 		} else if isSpace(newChar) {
-			shouldAdd := rand.Intn(5)
+			shouldAdd := rand.Intn(15)
 			if shouldAdd == 0 {
 				super = append(super, rune(rand.Intn(11)+48))
 			} else if shouldAdd == 1 {
@@ -103,7 +103,7 @@ func superString(str string) string {
 
 func hardString(str string) string {
 	lastChar := ' '
-	hard := []rune{}
+	med := []rune{}
 	for _, char := range str {
 		newChar := char
 		if isSpace(lastChar) && isLowerLetter(newChar) {
@@ -112,19 +112,21 @@ func hardString(str string) string {
 				newChar = shiftToUpper(newChar)
 			}
 		} else if isSpace(newChar) {
-			shouldAdd := rand.Intn(5)
-			if shouldAdd == 2 {
-				hard = append(hard, rune(rand.Intn(8)+58))
+			shouldAdd := rand.Intn(15)
+			if shouldAdd == 0 {
+				med = append(med, '.')
+			} else if shouldAdd == 1 {
+				med = append(med, ';')
+			} else if shouldAdd == 2 {
+				med = append(med, ':')
 			} else if shouldAdd == 3 {
-				hard = append(hard, rune(rand.Intn(6)+91))
-			} else if shouldAdd == 4 {
-				hard = append(hard, rune(rand.Intn(4)+123))
+				med = append(med, ',')
 			}
 		}
-		hard = append(hard, newChar)
+		med = append(med, newChar)
 		lastChar = newChar
 	}
-	return string(hard)
+	return string(med)
 }
 
 func medString(str string) string {
@@ -138,15 +140,9 @@ func medString(str string) string {
 				newChar = shiftToUpper(newChar)
 			}
 		} else if isSpace(newChar) {
-			shouldAdd := rand.Intn(5)
+			shouldAdd := rand.Intn(15)
 			if shouldAdd == 0 {
 				med = append(med, '.')
-			} else if shouldAdd == 1 {
-				med = append(med, ';')
-			} else if shouldAdd == 2 {
-				med = append(med, ':')
-			} else if shouldAdd == 3 {
-				med = append(med, ',')
 			}
 		}
 		med = append(med, newChar)

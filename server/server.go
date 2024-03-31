@@ -21,6 +21,7 @@ import (
 var LOCAL_MODE = ""
 var clients = make(map[net.Conn]string)
 var difficulty = stringgen.Easy
+var lastKilledByHost string
 
 func main() {
 	game.NAME = "Host"
@@ -30,11 +31,13 @@ func main() {
 
 func initImages() {
 	locs := []string{
-		"./sprites/Jet1.png",
-		"./sprites/Jet2.png",
-		"./sprites/Jet3.png",
-		"./sprites/Jet4.png",
-		"./sprites/Jet5.png",
+		"./sprites/Character0.png",
+		"./sprites/Character1.png",
+		"./sprites/Character2.png",
+		"./sprites/Character3.png",
+		"./sprites/Character4.png",
+		"./sprites/Enemy0.png",
+		"./sprites/Dead0.png",
 	}
 	for _, loc := range locs {
 		game.Sprites = append(game.Sprites, getImageFromFilePath(loc))
@@ -100,6 +103,11 @@ func sendStatusAll() {
 	game.LoopPlayers(func(id string, player game.PlayerInfo) {
 		status := []string{comms.SC_PLAYER, id, player.WritePlayer()}
 		writeToClients(status)
+		if game.LastKilled != lastKilledByHost {
+			status = []string{comms.SC_DEAD, game.LastKilled}
+			writeToClients(status)
+			lastKilledByHost = game.LastKilled
+		}
 	})
 }
 
@@ -129,6 +137,7 @@ func mainLoop() {
 		game.GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Press enter to play")))
 		game.EnterInput(start)
 		difficulty = game.DisplayDifficultyOption(difficulty)
+		game.DisplayMissileMode()
 		game.DisplayWinner()
 		game.DisplayPlayers()
 		game.DisplayBest()

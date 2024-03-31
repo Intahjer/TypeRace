@@ -18,15 +18,18 @@ var keyWidgetStr []KeyWidget
 var timer time.Time
 var Players = sync.Map{}
 var RunGame = false
+var IsDead = false
 var countDown = time.Now()
 var StartScreen = true
 var WINDOW = giu.NewMasterWindow(c.WNAME, c.WIDTH, c.HEIGHT, 0)
 var GUI = giu.SingleWindow()
 var lastBest = 0
 var Sprites = []image.Image{}
+var deadImage = 6
+var missileImage = 5
 
 func updateBest() {
-	thisBest := getWPM(GetMyPlayer(), c.TIMER)
+	thisBest := getWpm(GetMyPlayer(), c.TIMER)
 	if thisBest > lastBest {
 		lastBest = thisBest
 	}
@@ -42,7 +45,7 @@ func GameRun() {
 }
 
 func registerKey(char rune) {
-	if RunGame {
+	if RunGame && !IsDead {
 		newKeyWidgetStr := []KeyWidget{}
 		myPlayer := GetMyPlayer()
 		for currentIndex, currentChar := range keyWidgetStr {
@@ -66,13 +69,15 @@ func registerKey(char rune) {
 func StartGame(str string) {
 	resetStats()
 	resetTimer()
+	initMissle()
 	keyWidgetStr = createKeyWidget(str)
+	IsDead = false
 	RunGame = true
 }
 
 func resetStats() {
 	LoopPlayers(func(id string, player PlayerInfo) {
-		Players.Store(id, MakePlayer(player.Name, 0, 0, false))
+		Players.Store(id, MakePlayer(player.Name, 0, 0, false, false))
 	})
 }
 
@@ -84,10 +89,13 @@ func resetTimer() {
 func getWinner() string {
 	winner := comms.Id
 	LoopPlayers(func(id string, player PlayerInfo) {
-		if getWPM(player, c.TIMER) > getWPM(GetPlayer(winner), c.TIMER) {
-			winner = id
+		if id != missleId {
+			if getWpm(player, c.TIMER) > getWpm(GetPlayer(winner), c.TIMER) {
+				winner = id
+			}
 		}
 	})
+	bestLastWpm = getWpm(GetPlayer(winner), c.TIMER)
 	return GetPlayer(winner).Name
 }
 
@@ -100,6 +108,11 @@ func getSpriteWidgets() []giu.Widget {
 	for _, key := range keys {
 		player := GetPlayer(key)
 		dmg := getDamage(player)
+		if key == missleId {
+			dmg = missileImage
+		} else if player.Dead {
+			dmg = deadImage
+		}
 		layouts = append(layouts, giu.Style().SetFontSize(17*percent).To(giu.Row(
 			giu.Label(getDistance(player)),
 			giu.ImageWithRgba(Sprites[dmg]).ID(strconv.Itoa(dmg)).Size(75*percent, 50*percent),
@@ -120,9 +133,11 @@ func getGameWidgets(w []KeyWidget) []giu.Widget {
 	layouts := []giu.Widget{}
 	if int(time.Until(timer).Seconds()) > 0 {
 		tick := int(time.Until(timer).Seconds())
-		layouts = append(layouts, getKeyWidgets(w)...)
+		if !IsDead {
+			layouts = append(layouts, getKeyWidgets(w)...)
+		}
 		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{tick, c.WIDTH - 40, c.HEIGHT - 40}))
-		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{getWPM(GetMyPlayer(), c.TIMER-tick), 8, c.HEIGHT - 40}))
+		layouts = append(layouts, giu.Style().SetFontSize(30).To(&WpmWidget{getWpm(GetMyPlayer(), c.TIMER-tick), 8, c.HEIGHT - 40}))
 		layouts = append(layouts, getSpriteWidgets()...)
 	} else {
 		RunGame = false
@@ -173,7 +188,7 @@ func getCountdownWidget() giu.Widget {
 	return label
 }
 
-func getWPM(player PlayerInfo, timeElapsed int) int {
+func getWpm(player PlayerInfo, timeElapsed int) int {
 	if timeElapsed != 0 && player.KeysPressed != 0 {
 		return int(((float64(player.KeysPressed) / 5.0) / (float64(timeElapsed) / 60.0)) * (float64(player.KeysCorrect) / float64(player.KeysPressed)))
 	} else {
