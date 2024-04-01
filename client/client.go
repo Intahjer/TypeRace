@@ -30,10 +30,7 @@ func readConnection(conn net.Conn) {
 				command := strings.Split(text, comms.SPLIT)
 				switch command[0] {
 				case comms.SC_PLAYER:
-					if comms.Id != command[1] {
-						comms.UpdatePlayer(command[1])
-						game.Players.Store(command[1], game.ReadPlayer(command[2]))
-					}
+					updatePlayer(command[1], game.ReadPlayer(command[2]))
 				case comms.SC_START:
 					game.StartGame(command[1])
 				case comms.SC_SPRITES:
@@ -42,6 +39,18 @@ func readConnection(conn net.Conn) {
 					}
 				}
 			}
+		}
+	}
+}
+
+func updatePlayer(id string, player game.PlayerInfo) {
+	if comms.Id != id {
+		comms.UpdatePlayerConnection(id)
+		game.Players.Store(id, player)
+	} else {
+		if player.IsDead {
+			myPlayer := game.KillPlayer(game.GetMyPlayer())
+			game.Players.Store(comms.Id, myPlayer)
 		}
 	}
 }

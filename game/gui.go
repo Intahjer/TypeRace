@@ -18,14 +18,17 @@ var MISSILE_SPRITE = 5
 
 func displayWinner() {
 	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(40).To(giu.Label(c.CENTER_X + "WINNER : " + getWinner()))))
+	giu.Update()
 }
 
 func displayPlayers() {
-	ids := SortedIds()
+	ids := SortedStats()
+	size := getFitSize(countPlayers())
 	for _, id := range ids {
 		player := GetPlayer(id)
-		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(player.Name + " : " + strconv.Itoa(player.getWpm(c.TIMER)))))
+		GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Style().SetFontSize(15 * size).To(giu.Label(player.Name + " : " + strconv.Itoa(player.getWpm(c.TIMER))))))
 	}
+	giu.Update()
 }
 
 func DisplayStartScreen(onEnter func()) {
@@ -34,12 +37,14 @@ func DisplayStartScreen(onEnter func()) {
 		onEnter()
 		StartScreen = false
 	})
+	giu.Update()
 }
 
 func DisplayDifficultyOption(difficulty stringgen.Difficulty) stringgen.Difficulty {
 	GUI.Layout(giu.Button(string(difficulty)).OnClick(func() {
 		difficulty = changeDifficulty(difficulty)
 	}))
+	giu.Update()
 	return difficulty
 }
 
@@ -47,6 +52,7 @@ func DisplayMissileMode() {
 	GUI.Layout(giu.Button(string(MissileMode)).OnClick(func() {
 		MissileMode = changeMissileMode(MissileMode)
 	}))
+	giu.Update()
 }
 
 func changeMissileMode(missileMode MissileModeEnum) MissileModeEnum {
@@ -90,6 +96,7 @@ func GameLoop(loop func()) {
 		giu.PushColorWindowBg(c.DGRAY)
 		loop()
 		giu.PopStyleColor()
+		giu.Update()
 	}
 	WINDOW.Run(styleLoop)
 }
@@ -109,6 +116,7 @@ func displayGame() {
 
 func displayBest() {
 	GUI.Layout(getBestWidget())
+	giu.Update()
 }
 
 func DisplayStats() {
@@ -119,12 +127,15 @@ func DisplayStats() {
 
 func DisplayWaitingForHost() {
 	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for host...")))
+	giu.Update()
 }
 
 func DisplayWaitingForOthers() {
 	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Waiting for other players to finish...")))
+	giu.Update()
 }
 
 func DisplayHostScreen() {
 	GUI.Layout(giu.Align(giu.AlignCenter).To(giu.Label(c.CENTER_X + "Press enter to play")))
+	giu.Update()
 }

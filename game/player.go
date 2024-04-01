@@ -4,7 +4,6 @@ import (
 	"TypeRace/comms"
 	c "TypeRace/constants"
 	"TypeRace/stringgen"
-	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,7 +35,6 @@ func (p *PlayerInfo) WritePlayer() string {
 }
 
 func ReadPlayer(str string) PlayerInfo {
-	fmt.Println(str)
 	playerData := strings.Split(str, split)
 	arg1, _ := strconv.Atoi(playerData[1])
 	arg2, _ := strconv.Atoi(playerData[2])
@@ -61,9 +59,8 @@ func GetPlayer(k string) PlayerInfo {
 	return val.(PlayerInfo)
 }
 
-func KillPlayer(k string) {
-	v := GetPlayer(k)
-	Players.Store(k, GetNewPlayer(v.Name, v.KeysCorrect, v.KeysPressed, v.IsPlaying, true))
+func KillPlayer(player PlayerInfo) PlayerInfo {
+	return GetNewPlayer(player.Name, player.KeysCorrect, player.KeysPressed, player.IsPlaying, true)
 }
 
 func RemovePlayers() {
@@ -111,6 +108,19 @@ func SortedIds() []string {
 	keys := []string{}
 	LoopPlayers(func(name string, _ PlayerInfo) { keys = append(keys, name) })
 	sort.Strings(keys)
+	return keys
+}
+
+func SortedStats() []string {
+	keys := []string{}
+	LoopPlayers(func(name string, _ PlayerInfo) { keys = append(keys, name) })
+	sort.Slice(keys, func(i, j int) bool {
+		if GetPlayer(keys[i]).KeysCorrect == GetPlayer(keys[j]).KeysCorrect {
+			return strings.Compare(keys[i], keys[j]) == 1
+		} else {
+			return GetPlayer(keys[i]).KeysCorrect > GetPlayer(keys[j]).KeysCorrect
+		}
+	})
 	return keys
 }
 

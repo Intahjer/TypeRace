@@ -38,7 +38,7 @@ func Tick() {
 	time.Sleep(tick)
 }
 
-func UpdatePlayer(id string) {
+func UpdatePlayerConnection(id string) {
 	playerTick.Store(id, time.Now())
 }
 

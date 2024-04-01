@@ -1,6 +1,7 @@
 package game
 
 import (
+	"TypeRace/comms"
 	c "TypeRace/constants"
 	"math/rand"
 	"time"
@@ -64,11 +65,11 @@ func resetMissileId() {
 }
 
 func initEliminationMode() {
-	eliminationModeTick = (totalTime() / float64(countPlayers())) * c.MILLIS
+	eliminationModeTick = ((totalTime_s() + 1) / float64(countPlayers()))
 	eliminationModeDeaths = 0
 }
 
-func totalTime() float64 {
+func totalTime_s() float64 {
 	return float64((c.TIMER + c.COUNTDOWN - MISSILE_DELAY_s))
 }
 
@@ -108,35 +109,38 @@ func updateMissle() {
 }
 
 func updateEliminationMode() {
-	tick := int(time.Until(timer).Seconds())
-	if (c.TIMER-tick)/int(eliminationModeTick) > eliminationModeDeaths {
-		lowestKeys := 1000
-		lowestId := ""
+	tick := time.Until(timer).Seconds()
+	if int((totalTime_s())-tick)/int(eliminationModeTick) > eliminationModeDeaths {
+		var lowestKeys = 1000
+		var lowestId = ""
 		LoopPlayers(func(id string, player PlayerInfo) {
-			if !player.IsDead && player.KeysCorrect < lowestKeys {
+			if !IsMissle(id) && !player.IsDead && player.KeysCorrect < lowestKeys {
 				lowestKeys = player.KeysCorrect
 				lowestId = id
 			}
 		})
-		PlayersDead = append(PlayersDead, lowestId)
-		Players.Store(missileIdCurrent, GetNewPlayer("", lowestKeys, lowestKeys, false, false))
+		missleKill(lowestId)
+		forceMisslePosition(lowestKeys)
 		eliminationModeDeaths++
 	}
 }
 
-func keysPerMilli() float64 {
-	tick := int(time.Until(timer).Milliseconds())
+func forceMisslePosition(keys int) {
+	Players.Store(missileIdCurrent, GetNewPlayer("", keys, keys, false, false))
+}
+
+func keysPerSecond(wpm float64) int {
+	tick := float64(time.Until(timer).Milliseconds())
 	if tick != 0 {
-		secondsPassed := float64((c.TIMER + c.COUNTDOWN - MISSILE_DELAY_s) - tick)
-		return ((c.MILLIS * 5.0) * (secondsPassed)) / 60.0
+		secondsPassed := totalTime_s() - (tick / 1000)
+		return int((((5.0) * (secondsPassed)) / 60.0) * wpm)
 	}
 	return 0
 }
 
 func updateChaseMode() {
 	if time.Now().After(MissileStart) {
-		keys := int(chaseModeSpeed_wpm * keysPerMilli())
-		Players.Store(missileIdCurrent, GetNewPlayer("", keys, keys, false, false))
+		forceMisslePosition(keysPerSecond(chaseModeSpeed_wpm))
 		updateChaseKill()
 	}
 }
@@ -144,11 +148,18 @@ func updateChaseMode() {
 func updateChaseKill() {
 	LoopPlayers(func(id string, player PlayerInfo) {
 		if id != missileIdCurrent && player.KeysCorrect < GetPlayer(missileIdCurrent).KeysCorrect {
-			PlayersDead = append(PlayersDead, id)
+			missleKill(id)
 		}
 	})
 }
 
 func IsMissle(id string) bool {
 	return id == missileIdCurrent
+}
+
+func missleKill(id string) {
+	PlayersDead = append(PlayersDead, id)
+	if id == comms.Id {
+		Players.Store(id, KillPlayer(GetMyPlayer()))
+	}
 }

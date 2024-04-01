@@ -11,7 +11,7 @@ var timer time.Time
 var countDown time.Time
 
 func GameRun() {
-	if int(time.Until(timer).Seconds()) < 0 {
+	if int(time.Until(timer).Seconds()) <= 0 {
 		stopPlaying()
 	}
 	if !time.Now().After(countDown) {
