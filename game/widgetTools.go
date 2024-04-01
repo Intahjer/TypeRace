@@ -45,7 +45,7 @@ func getGameWidgets(w []KeyWidget) []giu.Widget {
 	layouts := []giu.Widget{}
 	tick := int(time.Until(timer).Seconds())
 	myPlayer := GetMyPlayer()
-	if !myPlayer.IsDead {
+	if !myPlayer.IsDead && !delayMissilePlayer() {
 		layouts = append(layouts, getKeyWidgets(w)...)
 	}
 	layouts = append(layouts, getTimeWidget(tick))
@@ -65,7 +65,7 @@ func getTimeWidget(tick int) giu.Widget {
 func getSpriteWidget(id string, size float32) giu.Widget {
 	player := GetPlayer(id)
 	sprite := player.getDamage()
-	if id == missileIdCurrent {
+	if id == MissileIdCurrent {
 		sprite = MISSILE_SPRITE
 	}
 	return giu.Style().SetFontSize(17 * size).To(giu.Row(

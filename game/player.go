@@ -144,7 +144,7 @@ func getWinner() string {
 	winningId := comms.Id
 	winningPlayer := GetPlayer(winningId)
 	LoopPlayers(func(id string, player PlayerInfo) {
-		if id != missileIdCurrent {
+		if id != MISSILE_ID_DEFAULT {
 			if player.getWpm(c.TIMER) > winningPlayer.getWpm(c.TIMER) {
 				winningId = id
 				winningPlayer = GetPlayer(winningId)

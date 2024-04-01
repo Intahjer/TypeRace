@@ -96,6 +96,10 @@ func handleMessage(message string, conn net.Conn) {
 }
 
 func sendStatusAll() {
+	if game.MissileMode == game.PvpMode {
+		status := []string{comms.SC_PVP, game.MissileIdCurrent}
+		writeToClients(status)
+	}
 	game.LoopPlayers(func(id string, player game.PlayerInfo) {
 		for _, deadId := range game.PlayersDead {
 			if id == deadId {

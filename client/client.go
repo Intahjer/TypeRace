@@ -37,6 +37,8 @@ func readConnection(conn net.Conn) {
 					if comms.Id == command[1] {
 						game.Sprites = append(game.Sprites, readSprite(command[2]))
 					}
+				case comms.SC_PVP:
+					game.MissileIdCurrent = command[1]
 				}
 			}
 		}

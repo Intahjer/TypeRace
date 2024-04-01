@@ -17,7 +17,7 @@ const (
 )
 
 var MissileMode = NoMode
-var missileIdCurrent = MISSILE_ID_DEFAULT
+var MissileIdCurrent = MISSILE_ID_DEFAULT
 var MissileStart time.Time
 var MISSILE_ID_DEFAULT = "MISSILE"
 var MISSILE_DELAY_s = 7
@@ -47,21 +47,22 @@ func initMode() {
 }
 
 func initPvpMode() {
-
+	ids := SortedIds()
+	MissileIdCurrent = ids[rand.Intn(len(ids))]
 }
 
 func resetMissile() {
 	resetMissileId()
-	_, missileExists := Players.Load(missileIdCurrent)
+	_, missileExists := Players.Load(MissileIdCurrent)
 	if missileExists {
-		Players.Delete(missileIdCurrent)
+		Players.Delete(MissileIdCurrent)
 	}
 	updateMissleStart()
 	PlayersDead = []string{}
 }
 
 func resetMissileId() {
-	missileIdCurrent = MISSILE_ID_DEFAULT
+	MissileIdCurrent = MISSILE_ID_DEFAULT
 }
 
 func initEliminationMode() {
@@ -76,7 +77,7 @@ func totalTime_s() float64 {
 func countPlayers() int {
 	count := 0
 	LoopPlayers(func(id string, _ PlayerInfo) {
-		if id != missileIdCurrent {
+		if id != MissileIdCurrent {
 			count++
 		}
 	})
@@ -108,6 +109,13 @@ func updateMissle() {
 	}
 }
 
+func delayMissilePlayer() bool {
+	if IsMissle(comms.Id) && !time.Now().After(MissileStart) {
+		return true
+	}
+	return false
+}
+
 func updateEliminationMode() {
 	tick := time.Until(timer).Seconds()
 	if int((totalTime_s())-tick)/int(eliminationModeTick) > eliminationModeDeaths {
@@ -126,7 +134,7 @@ func updateEliminationMode() {
 }
 
 func forceMisslePosition(keys int) {
-	Players.Store(missileIdCurrent, GetNewPlayer("", keys, keys, false, false))
+	Players.Store(MissileIdCurrent, GetNewPlayer("", keys, keys, false, false))
 }
 
 func keysPerSecond(wpm float64) int {
@@ -147,14 +155,14 @@ func updateChaseMode() {
 
 func updateChaseKill() {
 	LoopPlayers(func(id string, player PlayerInfo) {
-		if id != missileIdCurrent && player.KeysCorrect < GetPlayer(missileIdCurrent).KeysCorrect {
+		if id != MissileIdCurrent && player.KeysCorrect < GetPlayer(MissileIdCurrent).KeysCorrect {
 			missleKill(id)
 		}
 	})
 }
 
 func IsMissle(id string) bool {
-	return id == missileIdCurrent
+	return id == MissileIdCurrent
 }
 
 func missleKill(id string) {
