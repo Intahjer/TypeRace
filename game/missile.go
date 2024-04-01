@@ -155,7 +155,8 @@ func updateChaseMode() {
 
 func updateChaseKill() {
 	LoopPlayers(func(id string, player PlayerInfo) {
-		if id != MissileIdCurrent && player.KeysCorrect < GetPlayer(MissileIdCurrent).KeysCorrect {
+		_, exists := Players.Load(MissileIdCurrent)
+		if exists && id != MissileIdCurrent && player.KeysCorrect < GetPlayer(MissileIdCurrent).KeysCorrect {
 			missleKill(id)
 		}
 	})

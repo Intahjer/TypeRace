@@ -20,7 +20,7 @@ var SPLIT = "::"
 var EOF = "\n"
 var ADDR = ":8787"
 var Id = uuid.NewString()
-var tick = 1 * time.Second
+var tick = 100 * time.Millisecond
 var playerTick = sync.Map{}
 
 func Write(conn net.Conn, commands ...string) (int, error) {

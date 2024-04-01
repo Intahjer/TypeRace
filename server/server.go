@@ -27,13 +27,13 @@ func main() {
 
 func initImages() {
 	locs := []string{
-		"./sprites/Character0.png",
-		"./sprites/Character1.png",
-		"./sprites/Character2.png",
-		"./sprites/Character3.png",
-		"./sprites/Character4.png",
-		"./sprites/Enemy0.png",
-		"./sprites/Dead0.png",
+		"./resources/sprites/Character0.png",
+		"./resources/sprites/Character1.png",
+		"./resources/sprites/Character2.png",
+		"./resources/sprites/Character3.png",
+		"./resources/sprites/Character4.png",
+		"./resources/sprites/Enemy0.png",
+		"./resources/sprites/Dead0.png",
 	}
 	for _, loc := range locs {
 		game.Sprites = append(game.Sprites, getImageFromFilePath(loc))

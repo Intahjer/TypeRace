@@ -16,7 +16,7 @@ const (
 )
 
 var STRING_LIMIT = 300
-var stringDir = "./stringgen/strings/"
+var stringDir = "./resources/strings/"
 
 func GetString(difficulty Difficulty) string {
 	str := generateStr()
